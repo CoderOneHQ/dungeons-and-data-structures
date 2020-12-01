@@ -1,0 +1,9 @@
+{
+	"no_text": false,
+	"headless": false,
+	"interactive": false,
+	"start_paused": true,
+	"wait_end": 5,
+	"max_iterations": 3000,
+	"update_time_step1": 0.50
+}

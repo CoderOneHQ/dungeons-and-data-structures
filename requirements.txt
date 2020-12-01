@@ -1,0 +1,2 @@
+arcade==2.4.3
+watchdog==0.10.4
