@@ -400,11 +400,16 @@ class Game:
 
 		for fire in self.fire_list:
 			fire_owner = self.players[fire.owner_id] if fire.owner_id in self.players else None
+			
 			hitblock_list = self._collision_list(fire.pos, self.block_list)
 			for block in hitblock_list:
 				block.apply_hit(self.FIRE_HIT)
 				if not block.is_alive and fire_owner:
 					fire_owner.reward += block.reward
+			
+			hitbomb_list = self._collision_list(fire.pos, self.bomb_list)
+			for bomb in hitbomb_list:
+				bomb.apply_hit(bomb.hp)
 
 		# Pickup ammo:
 		for pid, player in self._alive_players():
@@ -499,7 +504,7 @@ class Game:
 		if not self._is_in_bounds(pos):
 			return False
 		
-		if self._collision_list(pos, self.block_list):
+		if self._collision_list(pos, self.block_list) or self._collision_list(pos, self.bomb_list):
 			self.fire_list.append(self._Fire(owner_pid, pos))
 			return False
 

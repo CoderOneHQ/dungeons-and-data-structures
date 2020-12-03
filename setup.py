@@ -23,8 +23,8 @@ setuptools.setup(
 		'arcade==2.4.3',
 		'watchdog==0.10.4',
 
-		'fire',
-		'requests'
+		# 'fire',
+		# 'requests'
 	],
     python_requires='>=3.6',
 	entry_points = {
