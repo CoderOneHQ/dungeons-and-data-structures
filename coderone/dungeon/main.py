@@ -28,10 +28,8 @@ APP_NAME = 'coderone.dungeon'
 ASSET_DIRECTORY = os.path.join(os.path.dirname(__file__), 'assets')
 DEFAULT_CONFIG_FILE = 'config.json'
 
-print(f"!!!! {ASSET_DIRECTORY}")
 
-
-SCREEN_TITLE = "Coder Oone: Dungeons & Data Structures"
+SCREEN_TITLE = "Coder One: Dungeons & Data Structures"
 # Do the math to figure out our screen dimensions
 SCREEN_WIDTH =  PADDING[0]*2 + WIDTH * 12
 SCREEN_HEIGHT = PADDING[1]*3 + HEIGHT * 10
