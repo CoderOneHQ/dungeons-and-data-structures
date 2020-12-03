@@ -125,3 +125,9 @@ class Driver:
 
 		self._proxies.append(proxy)
 		return proxy
+
+	def __enter__(self):
+		return self
+
+	def __exit__(self, exc_type, exc_value, traceback):
+		self.stop()

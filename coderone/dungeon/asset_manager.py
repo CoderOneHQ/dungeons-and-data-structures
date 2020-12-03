@@ -1,9 +1,7 @@
 from enum import Enum
 import os
 import random
-
-ASSET_DIRECTORY = 'assets'
-
+import pkgutil
 
 class AssetType(Enum):
 	IMAGE = 'images'
@@ -15,8 +13,10 @@ class AssetManager:
 	BOMB_IMAGE = "bomb_64px.png"
 	AMMUNITION_IMAGE = "chest.png"
 	CRATE_IMAGE = "crate.png"
+	METAL_BLOCK_IMAGE = "metal_block.png"
 	SKELETON_IMAGE = "skelet_run_anim_f1.png"
 	FIRE_IMAGE = "coin_anim_f0.png"
+	EXPLOSION_IMAGE = "explosion.png"
 
 	# Sounds
 	EXP_SOUND = "explosion.mp3"
@@ -29,8 +29,12 @@ class AssetManager:
 		"p2_knight_orange_64px_flipped.png", 
 		]
 	
-	def __init__(self, asset_dir:str=ASSET_DIRECTORY):
+	def __init__(self, asset_dir:str):
 		self.asset_dir = asset_dir
+
+	@property
+	def explosion(self):
+		return self.asset(self.EXPLOSION_IMAGE, AssetType.IMAGE)
 
 	@property
 	def floor_tile(self):
@@ -39,8 +43,7 @@ class AssetManager:
 
 	@property
 	def metal_block(self):
-		SOFT_METAL_BLOCK_IMAGE = "soft_block_transparent_metal.png"
-		return self.asset(SOFT_METAL_BLOCK_IMAGE, AssetType.IMAGE)
+		return self.asset(self.METAL_BLOCK_IMAGE, AssetType.IMAGE)
 
 	@property
 	def crate(self):
@@ -71,4 +74,5 @@ class AssetManager:
 		return self.asset(avatar, AssetType.IMAGE)
 
 	def asset(self, name, assetType: AssetType):
+		# data = pkgutil.get_data(__name__, "templates/temp_file")
 		return os.path.join(self.asset_dir, assetType.value, name)

@@ -1,12 +1,12 @@
-Dungeons and data structures: Tournamant game
+Dungeons and data structures: AI Game Tournament
 
 ## Installation instructions
 
-"""shell
+```shell
 > python3 -m venv venv
 > source venv/bin/activate
 > pip install -r requirements.txt
-"""
+```
 
 ## Running a game
 Once all game dependencies properly installed, the game can be launched using command line:

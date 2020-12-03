@@ -1,5 +1,6 @@
 import random
 import logging
+
 from enum import Enum
 from typing import Dict, List, Tuple, Union, NamedTuple, Any, Optional
 from collections import defaultdict
@@ -30,7 +31,6 @@ class GameSysAction(NamedTuple):
 	action: GameSysActions
 	payload: Any
 
-# PlayerMove = Tuple[PID, PlayerActions]
 class PlayerMove(NamedTuple):
 	pid: PID
 	action: PlayerActions

@@ -25,3 +25,9 @@ class Driver:
 
 	def agent(self):
 		return self.agent_module.agent() if self.agent_module else None
+
+	def __enter__(self):
+		return self
+
+	def __exit__(self, exc_type, exc_value, traceback):
+		self.stop()

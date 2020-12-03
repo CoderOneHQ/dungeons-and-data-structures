@@ -1,27 +1,19 @@
 import arcade
 from pyglet.gl import GL_NEAREST
 
-from game import PlayerActions
-from asset_manager import AssetManager, AssetType, ASSET_DIRECTORY
+from .asset_manager import AssetManager, AssetType
+from .game import PlayerActions, Point, PID, Game
 
-
-# This sets the margin between each cell and on the edges of the screen.
-MARGIN = 0
-
-# This sets the WIDTH and HEIGHT of each grid location in pixels
+# WIDTH and HEIGHT of each grid cell in pixels
 WIDTH = 64
 HEIGHT = 64
-# This set the movement speed
-MOVEMENT_SPEED = 5
 PADDING = (int(WIDTH/2), HEIGHT)
 
-def grid_to_pos(pos):
-	x = PADDING[0] + pos[0] * (WIDTH + MARGIN) + (WIDTH / 2 + MARGIN)
-	y = PADDING[1] + pos[1] * (HEIGHT + MARGIN) + (HEIGHT / 2 + MARGIN)
-	return x,y 
 
-# def pos_to_grid(x:int, y:int):
-# 	return int(x // (WIDTH + MARGIN)), int(y // (HEIGHT + MARGIN))
+def grid_to_pos(pos:Point):
+	x = PADDING[0] + pos[0] * WIDTH + (WIDTH / 2)
+	y = PADDING[1] + pos[1] * HEIGHT  + (HEIGHT / 2)
+	return x,y 
 
 
 class Sfx(arcade.Sprite):
@@ -29,7 +21,7 @@ class Sfx(arcade.Sprite):
 		animation with no game mechanics impact
 	"""
 
-	def __init__(self, loc, texture_list):
+	def __init__(self, loc:Point, texture_list):
 		super().__init__()
 		self.center_x,self.center_y = grid_to_pos(loc)
 
@@ -68,7 +60,7 @@ class Player(StaticSprite):
 			self.remove_from_sprite_lists()
 
 
-class MyGame(arcade.Window):
+class GameWindow(arcade.Window):
 	"""
 	Main application class.
 	"""
@@ -76,20 +68,20 @@ class MyGame(arcade.Window):
 	def _add_wall(self, col, row, asset):
 		tile = arcade.Sprite(asset, 4)
 		x,y = grid_to_pos((col,row))
-		# tile.set_position(col*WIDTH + (WIDTH / 2), row*HEIGHT + (HEIGHT / 2))
 		tile.set_position(x,y)
 		self.chrome_tiles.append(tile)
 
-	def __init__(self, width, height, title, game, user_pid, config):
+	def __init__(self, width:int, height:int, title:str, game:Game, user_pid:PID, config, intractive:bool):
 		"""
 		Set up the application.
 		"""
 		super().__init__(width, height, title)
 
 		self.app_config = config
-		self.asset_man = AssetManager(config.get('assets', ASSET_DIRECTORY))
+		self.asset_man = AssetManager(config.get('assets'))
 		self.game = game
 		self.user_pid = user_pid
+		self.intractive = intractive
 		self.paused = self.app_config.get('start_paused', False)
 		self.end_game_wait_time = self.app_config.get('wait_end', 10)
 		self.end_game_timer = self.end_game_wait_time
@@ -104,14 +96,12 @@ class MyGame(arcade.Window):
 		count = 60
 		sprite_width = 256
 		sprite_height = 256
-		file_name = self.asset_man.asset("explosion.png", AssetType.IMAGE)
 
 		# Load the explosions from a sprite sheet
-		self.explosion_texture_list = arcade.load_spritesheet(file_name, sprite_width, sprite_height, columns, count)
+		self.explosion_texture_list = arcade.load_spritesheet(self.asset_man.explosion, sprite_width, sprite_height, columns, count)
 
 		# Loading explostions sound
 		self.hit_sound = arcade.sound.load_sound(self.asset_man.explosion_sound)
-
 
 		self.chrome_tiles = arcade.SpriteList()
 		self._add_wall(-1, self.game.row_count + 1, self.asset_man.asset("chrome/wall_side_top_left.png", AssetType.IMAGE))
@@ -120,19 +110,14 @@ class MyGame(arcade.Window):
 		self._add_wall(-1, -1, self.asset_man.asset("chrome/wall_side_front_left.png", AssetType.IMAGE))
 		self._add_wall(self.game.column_count, -1, self.asset_man.asset("chrome/wall_side_front_right.png", AssetType.IMAGE))
 		
-		# self._add_wall(self.game.column_count - 1, 0, self.asset_man.asset("chrome/wall_top_right.png", AssetType.IMAGE))
 		self._add_wall(0, self.game.row_count, self.asset_man.asset("chrome/wall_corner_front_left.png", AssetType.IMAGE))
 		self._add_wall(0, self.game.row_count + 1, self.asset_man.asset("chrome/wall_corner_top_left.png", AssetType.IMAGE))
 
 		self._add_wall(self.game.column_count - 1, self.game.row_count, self.asset_man.asset("chrome/wall_corner_front_right.png", AssetType.IMAGE))
-		self._add_wall(self.game.column_count - 1, self.game.row_count+1, self.asset_man.asset("chrome/wall_corner_top_left.png", AssetType.IMAGE))
+		self._add_wall(self.game.column_count - 1, self.game.row_count+1, self.asset_man.asset("chrome/wall_corner_top_right.png", AssetType.IMAGE))
 
 		self._add_wall(0, 0, self.asset_man.asset("chrome/wall_top_left.png", AssetType.IMAGE))
 		self._add_wall(self.game.column_count - 1, 0, self.asset_man.asset("chrome/wall_top_right.png", AssetType.IMAGE))
-
-		# self._add_wall(0, 0, self.asset_man.asset("chrome/wall_corner_bottom_left.png", AssetType.IMAGE))
-		# self._add_wall(self.game.column_count - 1, 0, self.asset_man.asset("chrome/wall_corner_bottom_right.png", AssetType.IMAGE))
-
 		for column in range(1, self.game.column_count - 1):
 			self._add_wall(column, self.game.row_count+1, self.asset_man.asset("chrome/wall_top_mid.png", AssetType.IMAGE))
 			self._add_wall(column, 0, self.asset_man.asset("chrome/wall_top_mid.png", AssetType.IMAGE))
@@ -141,7 +126,6 @@ class MyGame(arcade.Window):
 
 		for column in range(0, self.game.column_count):
 			self._add_wall(column, -1, self.asset_man.asset("chrome/wall_mid.png", AssetType.IMAGE))
-			# self._add_wall(column, 0, self.asset_man.asset("chrome/wall_mid.png", AssetType.IMAGE))
 
 		for row in range(0, self.game.row_count+1):
 			self._add_wall(-1, row, self.asset_man.asset("chrome/wall_side_mid_left.png", AssetType.IMAGE))
@@ -274,14 +258,14 @@ class MyGame(arcade.Window):
 		if key == arcade.key.ENTER:
 			self.paused = not self.paused
 
-		if key == arcade.key.R and modifiers == arcade.key.MOD_SHIFT:
+		if self.intractive and key == arcade.key.R and modifiers == arcade.key.MOD_SHIFT:
 			self.paused = True
 			self.end_game_timer = self.end_game_wait_time
 			self.game.generate_map()
 			self._map_game()
 
 		# Next command are only accepted if game is not paused:
-		if self.paused:
+		if self.paused or not self.intractive or not self.user_pid:
 			return
 
 		if key == arcade.key.UP or key == arcade.key.W:
