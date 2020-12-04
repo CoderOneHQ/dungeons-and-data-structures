@@ -6,7 +6,6 @@
 
 import argparse
 import os
-import time
 import sys
 import logging
 import json
@@ -20,8 +19,6 @@ from .game_recorder import FileRecorder, Recorder
 from .agent_driver.multiproc_driver import Driver
 
 from .game import Game
-from .arcade_client import GameWindow, WIDTH, HEIGHT, PADDING
-
 
 APP_NAME = 'coderone.dungeon'
 
@@ -30,9 +27,6 @@ DEFAULT_CONFIG_FILE = 'config.json'
 
 
 SCREEN_TITLE = "Coder One: Dungeons & Data Structures"
-# Do the math to figure out our screen dimensions
-SCREEN_WIDTH =  PADDING[0]*2 + WIDTH * 12
-SCREEN_HEIGHT = PADDING[1]*3 + HEIGHT * 10
 
 
 TICK_STEP = 0.1 		# Number of seconds per 1 iteration of game loop
@@ -164,26 +158,15 @@ def run(agent_modules, headless=False, watch=False, interactive=False, config=No
 
 		tick_step = config.get('tick_step')
 		if headless or config.get('headless'):
-			while not game.game_ended:
-				logger.info(f"Game step [{game.tick_counter}/{game.max_iterations}]... ")
-
-				cycle_start_time = time.time()
-				game.tick(tick_step)
-				dt = time.time() - cycle_start_time
-
-				stats = game.stats()
-				for p in stats['players'].values():
-					name = "{}{}".format(p['name'], '(bot)' if p['is_bot'] else "")
-					logger.info(f"{name} HP: {p['hp']} / Ammo: {p['ammo']} / Score: {p['score']}, loc: ({p['position'][0]}, {p['position'][0]})")
-
-				logger.debug(f"...step [{game.tick_counter}/{game.max_iterations}] completed in {dt*1000.0:.4f}ms")
-
-				sleep_time = tick_step - dt
-				if sleep_time > 0:
-					logger.debug(f"has time to sleep for {sleep_time}sec")
-					time.sleep(sleep_time)
-
+			from .headless_client import Client
+			client = Client(game=game, config=config)
+			client.run(tick_step)
 		else:
+			from .arcade_client import GameWindow, WIDTH, HEIGHT, PADDING
+			# Do the math to figure out our screen dimensions
+			SCREEN_WIDTH =  PADDING[0]*2 + WIDTH * 12
+			SCREEN_HEIGHT = PADDING[1]*3 + HEIGHT * 10
+
 			window = GameWindow(SCREEN_WIDTH, SCREEN_HEIGHT, SCREEN_TITLE, game, user_pid, config, intractive=is_interactive)
 			window.run(tick_step)
 

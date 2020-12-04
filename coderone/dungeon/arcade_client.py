@@ -152,7 +152,9 @@ class GameWindow(arcade.Window):
 
 		# Create player sprites
 		self.player_list.extend([Player(self.asset_man.player_avatar(pid), player) for pid, player in self.game.players.items()])
+		
 		self.block_list.extend(map(lambda block: StaticSprite(self.asset_man.metal_block if block.hp > 1 else self.asset_man.crate, block, 4.0), self.game.block_list))
+
 		self._add_blocks(self.asset_man.bomb, 		self.game.bomb_list, 1)
 		self._add_blocks(self.asset_man.ammunition, self.game.ammunition_list)
 		self._add_blocks(self.asset_man.fire, 		self.game.fire_list)
@@ -207,6 +209,7 @@ class GameWindow(arcade.Window):
 			for pid, player in self.game.players.items():
 				name = "{}{}".format(player.name, '(bot)' if self.game.is_bot(pid) else "")
 				player_output = f"{name} HP: {player.hp:3d} / Ammo: {player.ammo:3d} / Score: {player.reward:4d}"
+
 				arcade.draw_text(player_output, 10, current_text_height, arcade.color.WHITE, 14, font_name='arial')
 				current_text_height -= d_height
 

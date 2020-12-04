@@ -61,7 +61,7 @@ class Game:
 
 	SOFTBLOCK_COUNT = 30
 	HARDBLOCK_COUNT = 10
-	PLAYER_START_AMMO = 2
+	PLAYER_START_AMMO = 3
 	FREE_AMMO_COUNT = 1
 
 	# Rewards
@@ -170,14 +170,14 @@ class Game:
 
 		def __init__(self, pos:Point, hp:int):
 			super().__init__(pos=pos, ttl=hp)
-			self.reward = 1
+			self.reward = Game.SOFTBLOCK_REWARD
 
 	class _MetalBlock(_Destructable):
 		Tag = 'mb'
 
 		def __init__(self, pos:Point, hp:int):
 			super().__init__(pos=pos, ttl=hp)
-			self.reward = 4
+			self.reward = Game.HARDBLOCK_REWARD
 
 
 	def __init__(self, row_count=ROW_COUNT, column_count=COLUMN_COUNT, max_iterations=None, recorder=Recorder()):
@@ -329,6 +329,8 @@ class Game:
 		self._action_queue[pid].append(action)
 
 	def _apply_action(self, pid: PID, action: PlayerActions) -> bool:
+		self.recorder.record(self.tick_counter, PlayerMove(pid=pid, action=action))
+
 		if not action:
 			return False
 
@@ -377,12 +379,16 @@ class Game:
 				self._update_agent(dt, pid, agent, game_map, state)
 
 			# Apply enqueued actions
+			orders_for_tick = []
 			for pid, action_queue in self._action_queue.items():
 				if action_queue:
 					action = action_queue.pop(0)
-					# Note: should we randomize the order of actions?
-					self.recorder.record(self.tick_counter, PlayerMove(pid=pid, action=action))
-					self._apply_action(pid, action)
+					orders_for_tick.append((pid, action))
+			
+			# Randomize the order of actions?
+			random.shuffle(orders_for_tick)
+			for pid, action_queue in orders_for_tick:
+				self._apply_action(pid, action)
 
 		# Apply fire!
 		for pid, player in self._alive_players():

@@ -24,8 +24,8 @@ class AssetManager:
 	FLOOR_TILES = ["floor_1.png", "floor_2.png", "floor_3.png", "floor_4.png", "floor_5.png", "floor_6.png", "floor_7.png", "floor_8.png"]
 	PLAYER_AVATARS = [
 		"p1_knight_64px.png",
-		"p2_knight_64px.png",
 		"p2_knight_64px_flipped.png", 
+		"p2_knight_64px.png",
 		"p2_knight_orange_64px_flipped.png", 
 		]
 	
