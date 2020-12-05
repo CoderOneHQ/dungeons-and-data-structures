@@ -60,7 +60,7 @@ class Player(StaticSprite):
 			self.remove_from_sprite_lists()
 
 
-class GameWindow(arcade.Window):
+class Client(arcade.Window):
 	"""
 	Main application class.
 	"""
@@ -71,7 +71,7 @@ class GameWindow(arcade.Window):
 		tile.set_position(x,y)
 		self.chrome_tiles.append(tile)
 
-	def __init__(self, width:int, height:int, title:str, game:Game, user_pid:PID, config, intractive:bool):
+	def __init__(self, width:int, height:int, title:str, game:Game, config, intractive:bool, user_pid:PID):
 		"""
 		Set up the application.
 		"""

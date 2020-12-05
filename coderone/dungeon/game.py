@@ -5,11 +5,9 @@ from enum import Enum
 from typing import Dict, List, Tuple, Union, NamedTuple, Any, Optional
 from collections import defaultdict
 
-logger = logging.getLogger(__name__)
+from .agent import Agent, Point, PID, EntityTags, GameState, PlayerState
 
-# Typings
-Point = Tuple[int, int]
-PID = int
+logger = logging.getLogger(__name__)
 
 
 class DelayedEffectType(Enum):
@@ -142,10 +140,10 @@ class Game:
 			
 
 	class _Ammunitation(_Positioned):
-		Tag = "a"
+		Tag = EntityTags.Ammo.value
 
 		def __init__(self, pos: Point, value: int=1):
-			super(Game._Ammunitation, self).__init__(pos=pos)
+			super().__init__(pos=pos)
 			self.value = value
 
 		@property
@@ -156,7 +154,7 @@ class Game:
 			pass
 
 	class _Bomb(_OwnedPositionedPerishable):
-		Tag = "b"
+		Tag = EntityTags.Bomb.value
 
 		def __init__(self, owner_id:PID, pos:Point, ttl:int, power:int):
 			super().__init__(owner_id=owner_id, pos=pos, ttl=ttl)
@@ -166,14 +164,14 @@ class Game:
 		pass
 
 	class _SoftBlock(_Destructable):
-		Tag = 'sb'
+		Tag = EntityTags.SoftBlock.value
 
 		def __init__(self, pos:Point, hp:int):
 			super().__init__(pos=pos, ttl=hp)
 			self.reward = Game.SOFTBLOCK_REWARD
 
 	class _MetalBlock(_Destructable):
-		Tag = 'mb'
+		Tag = EntityTags.MetalBlock.value
 
 		def __init__(self, pos:Point, hp:int):
 			super().__init__(pos=pos, ttl=hp)
@@ -191,7 +189,7 @@ class Game:
 		self.tick_counter = 0
 		self.max_iterations = max_iterations
 		self._pid_counter = 0
-		self._agents = {}
+		self._agents:Dict[PID, Agent] = {}
 
 		self.players:Dict[PID, self._Player] = {}
 		
@@ -278,6 +276,18 @@ class Game:
 		self.all_entities = self.bomb_list + self.fire_list + self.ammunition_list + self.block_list
 		self.recorder.record(self.tick_counter, GameSysAction(GameSysActions.MAP, self._serialize_map()))
 
+	def _serialize_state(self) -> GameState:
+		return GameState(
+				is_over=self.game_ended,
+				tick_number=self.tick_counter, 
+				size=(self.row_count, self.column_count),
+				
+				game_map=self._serialize_map(),
+				ammo=[a.pos for a in self.ammunition_list].copy(),
+				bombs=[a.pos for a in self.bomb_list].copy(),
+				blocks=[(block.Tag, block.pos) for block in self.block_list].copy(),
+				players=[(pid, player.pos) for pid, player in self.players.items()].copy(),
+			)
 
 	def _serialize_map(self):
 		# Create an occupancy map for AI-agents to base decisions on
@@ -371,11 +381,11 @@ class Game:
 		if not self.game_ended:
 			self.tick_counter += 1
 			
-			game_map = self._serialize_map()
-			state = self._current_state()
+			game_map = self._serialize_state()
 
 			# Gather agents commands
 			for pid, agent in self._agents.items():
+				state = self._player_state(pid, self.players[pid] if pid in self.players else None)
 				self._update_agent(dt, pid, agent, game_map, state)
 
 			# Apply enqueued actions
@@ -453,7 +463,7 @@ class Game:
 
 		self.bomb_list = 		self._only_alive(self.bomb_list)
 		self.fire_list =		self._only_alive(self.fire_list)
-		self.ammunition_list =	self._only_alive(self.ammunition_list)
+		self.bomb_listammunition_list =	self._only_alive(self.ammunition_list)
 		self.block_list =		self._only_alive(self.block_list)
 		#self.players = dict(filter(lambda p: p.is_alive, self.players.values()))
 
@@ -465,7 +475,7 @@ class Game:
 		has_opponents = sum(p.is_alive for p in self.players.values()) > 1
 		self.game_ended = not has_opponents or over_iter_limit # There can be only one! 
 
-	def add_agent(self, agent, name: Optional[str]) -> PID:
+	def add_agent(self, agent:Agent, name: Optional[str]) -> PID:
 		pid = self.add_player(name)
 
 		self._agents[pid] = agent
@@ -494,17 +504,8 @@ class Game:
 		if action: 
 			self.enqueue_action(pid, action)
 
-	def _current_state(self):
-		"""  
-		Returns the current state of the game in a dictionary format
-		for the developer to understand more of the world before making
-		decision.
-		"""
-		state_dic = {
-			'player_list': self.players
-		}
-
-		return state_dic
+	def _player_state(self, id:PID, player:_Player):
+		return PlayerState(id=id, ammo=player.ammo, hp=player.hp, location=player.pos, reward=player.reward, power=player.power)
 
 	def _try_add_fire(self, owner_pid:PID, pos:Point) -> bool:
 		if not self._is_in_bounds(pos):

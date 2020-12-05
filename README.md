@@ -31,8 +31,11 @@ Once you have working installation you can start working on your AI-agent.
 > coderone-dungeon --interactive --watch my_agent
 
 ### Windows
-**TBD
-
+Windows installation follows similar steps as other operating system. 
+It is possible that you might need to use an alternative way to start the game, instead of realying on the convenice wraper `codeone-dungeon`
+```shell
+> python -m coderone.dungeon.main
+```
 
 ## Running a game
 Once all game dependencies properly installed, the game can be launched using command line:
@@ -67,7 +70,7 @@ There are 3 main modes to run the game:
  This is the mode used to run a tornamanet.
 
 By default, game runs in a tornament mode, without user input, with graphics output. For example, to ran a random match between two AI agent "agent1.py" and "agent2.py", run:
-> ./main.py agent1.py agent2.py
+> coderone-dungeon agent1.py agent2.py
 
 Agent with multiple files code are also supported. Keep in mind that a proper [python modules](https://docs.python.org/3/tutorial/modules.html) must include `__init__.py` file.
 

@@ -37,7 +37,7 @@ logging.basicConfig(stream=sys.stdout, level=logging.INFO)
 # logger.setLevel(logging.DEBUG)
 
 
-def __load_or_generate_config(config_file:Optional[str]) -> dict:
+def __load_or_generate_config(args, config_file:Optional[str]) -> dict:
 	## Setting up the players using the config file
 
 	if config_file:
@@ -77,6 +77,7 @@ def __load_or_generate_config(config_file:Optional[str]) -> dict:
 	config_data.setdefault('assets', ASSET_DIRECTORY)
 	config_data.setdefault('interactive', False)
 	config_data.setdefault('update_time_step', TICK_STEP)
+	config_data.setdefault('hack', args.hack or False)
 	config_data.setdefault('no_text', False)  # A work around Pillow (Python image library) bug	
 
 	return config_data
@@ -159,15 +160,21 @@ def run(agent_modules, headless=False, watch=False, interactive=False, config=No
 		tick_step = config.get('tick_step')
 		if headless or config.get('headless'):
 			from .headless_client import Client
+
 			client = Client(game=game, config=config)
 			client.run(tick_step)
 		else:
-			from .arcade_client import GameWindow, WIDTH, HEIGHT, PADDING
-			# Do the math to figure out our screen dimensions
-			SCREEN_WIDTH =  PADDING[0]*2 + WIDTH * 12
-			SCREEN_HEIGHT = PADDING[1]*3 + HEIGHT * 10
+			if config.get('hack'):
+				from .hack_client import Client
+				screen_width =  80
+				screen_height = 24
+			else:
+				from .arcade_client import Client, WIDTH, HEIGHT, PADDING
+			
+				screen_width =  PADDING[0]*2 + WIDTH * 12
+				screen_height = PADDING[1]*3 + HEIGHT * 10
 
-			window = GameWindow(SCREEN_WIDTH, SCREEN_HEIGHT, SCREEN_TITLE, game, user_pid, config, intractive=is_interactive)
+			window = Client(width=screen_width, height=screen_height, title=SCREEN_TITLE, game=game, config=config, intractive=is_interactive, user_pid=user_pid)
 			window.run(tick_step)
 
 		# Announce game winner and exit
@@ -192,6 +199,9 @@ def main():
 					help='automatically reload agents on file changes')
 	parser.add_argument('--record', type=str,
 					help='file name to record game')
+	parser.add_argument('--hack', action='store_true',
+					default=False,
+					help=argparse.SUPPRESS)
 	parser.add_argument('--config', type=str,
 					default=None,
 					help='path to the custom config file')
@@ -200,7 +210,7 @@ def main():
 
 	args = parser.parse_args()
 
-	config = __load_or_generate_config(args.config)
+	config = __load_or_generate_config(args, args.config)
 
 	if args.headless and len(args.agents) < 2:
 		print("At least 2 agents must be provided in the match mode. Exiting", file=sys.stderr)

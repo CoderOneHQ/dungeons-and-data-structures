@@ -1,14 +1,7 @@
 import logging
+from ..agent import Agent
 
 logger = logging.getLogger(__name__)
-
-
-class Agent:
-	def next_move(self, game_map, game_state):
-		pass
-	
-	def stop(self):
-		pass
 
 class AgentProxy(Agent):
 	def __init__(self, module):
