@@ -490,8 +490,7 @@ class Game:
 				ammo=[a.pos for a in self.ammunition_list].copy(),
 				treasure=[a.pos for a in self.treasure_list].copy(),
 				bombs=[a.pos for a in self.bomb_list].copy(),
-				# TODO: Static blocks!
-				blocks=[(block.Tag, block.pos) for block in self.value_block_list].copy(),
+				blocks=[(block.Tag, block.pos) for block in self.all_blocks].copy(),
 				players=[(pid, player.pos) for pid, player in self.players.items()].copy(),
 			)
 

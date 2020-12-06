@@ -9,6 +9,7 @@ class EntityTags(Enum):
 	Ammo = "a"
 	Treasure = 't'
 	Bomb = "b"
+
 	SoftBlock = 'sb'
 	OreBlock = 'ob'
 	IndestructibleBlock = 'ib'
@@ -20,8 +21,8 @@ class GameState:
 
 	def __init__(self, is_over:bool, tick_number:int, size:Point, 
 				game_map:Dict,
-				treasure:List[Point],
 				ammo:List[Point],
+				treasure:List[Point],
 				bombs:List[Point],
 				blocks,
 				players,
@@ -38,16 +39,10 @@ class GameState:
 
 
 	@property
-	def map_size(self) -> Tuple:
+	def map_size(self) -> Point:
 		"""Get the size of the map area as a 'Point' tuple
 		"""
 		return self.size
-	
-	@property
-	def bombs(self):
-		"""Get a list of bombs placed on the map.
-		"""
-		return self._bombs
 
 	@property
 	def ammo(self) -> List[Point]:
@@ -56,18 +51,28 @@ class GameState:
 	@property
 	def treasure(self) -> List[Point]:
 		return self._treasure
+	
+	@property
+	def bombs(self) -> List[Point]:
+		"""Get a list of bombs placed on the map.
+		"""
+		return self._bombs
 
 	@property
 	def all_blocks(self) -> List[Point]:
 		return [pos for tag, pos in self._blocks]
 
 	@property
+	def indestructible_blocks(self) -> List[Point]:
+		return [pos for tag, pos in self._blocks if tag == EntityTags.IndestructibleBlock.value]
+
+	@property
 	def soft_blocks(self) -> List[Point]:
 		return [pos for tag, pos in self._blocks if tag == EntityTags.SoftBlock.value]
 	
 	@property
-	def hard_blocks(self) -> List[Point]:
-		return [pos for tag, pos in self._blocks if tag == EntityTags.MetalBlock.value]
+	def ore_blocks(self) -> List[Point]:
+		return [pos for tag, pos in self._blocks if tag == EntityTags.OreBlock.value]
 
 	def is_in_bounds(self, location:Point) -> bool:
 		return 	location[0] >= 0 and location[0] < self.size[0] and \
