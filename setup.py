@@ -5,7 +5,7 @@ with open("README.md", "r", encoding="utf-8") as fh:
 
 setuptools.setup(
 	name='coderone-challenge-dungeons',
-	version='0.1.2.dev1',
+	version='0.1.3.dev1',
 	description='Dungeons and data structures: Coder one AI Game Tournament',
 	url='https://github.com/gocoderone/dungeons-and-data-structures',
 	author='Ivan Ryabov',
@@ -40,8 +40,10 @@ setuptools.setup(
 			'assets/sounds/explosion.mp3',
 
 			'assets/images/bomb_64px.png',
+			'assets/images/ammo.png',
 			'assets/images/chest.png',
 			'assets/images/crate.png',
+			'assets/images/ore_block.png',
 			'assets/images/metal_block.png',
 			'assets/images/skelet_run_anim_f1.png',
 			'assets/images/coin_anim_f0.png',
@@ -60,6 +62,8 @@ setuptools.setup(
 			'assets/images/p2_knight_64px.png',
 			'assets/images/p2_knight_64px_flipped.png',
 			'assets/images/p2_knight_orange_64px_flipped.png',
+			'assets/images/wizard_m_64px.png',
+			'assets/images/wizard_f_64px.png',
 
 			"assets/images/chrome/wall_side_top_left.png",
 			"assets/images/chrome/wall_side_top_right.png",

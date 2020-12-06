@@ -153,10 +153,12 @@ class Client(arcade.Window):
 		# Create player sprites
 		self.player_list.extend([Player(self.asset_man.player_avatar(pid), player) for pid, player in self.game.players.items()])
 		
-		self.block_list.extend(map(lambda block: StaticSprite(self.asset_man.metal_block if block.hp > 1 else self.asset_man.crate, block, 4.0), self.game.block_list))
+		self._add_blocks(self.asset_man.indestructible_block, self.game.static_block_list)
+		self.block_list.extend(map(lambda block: StaticSprite(self.asset_man.ore_block if block.hp > 1 else self.asset_man.soft_block, block, 4.0), self.game.value_block_list))
 
+		self._add_blocks(self.asset_man.ammunition, self.game.ammunition_list, 1)
+		self._add_blocks(self.asset_man.treasure, 	self.game.treasure_list)
 		self._add_blocks(self.asset_man.bomb, 		self.game.bomb_list, 1)
-		self._add_blocks(self.asset_man.ammunition, self.game.ammunition_list)
 		self._add_blocks(self.asset_man.fire, 		self.game.fire_list)
 		self._add_blocks(self.asset_man.skeleton, 	self.game.dead_player_list)
 
@@ -167,8 +169,9 @@ class Client(arcade.Window):
 			sprite.remove_from_sprite_lists()
 
 		all_block_owner = [sprite.owner for sprite in self.block_list]
+		self._add_blocks(self.asset_man.ammunition, [block for block in self.game.ammunition_list if block not in all_block_owner], 1)
+		self._add_blocks(self.asset_man.treasure, 	[block for block in self.game.treasure_list if block not in all_block_owner])
 		self._add_blocks(self.asset_man.bomb, 		[block for block in self.game.bomb_list if block not in all_block_owner], 1)
-		self._add_blocks(self.asset_man.ammunition, [block for block in self.game.ammunition_list if block not in all_block_owner])
 		self._add_blocks(self.asset_man.fire, 		[block for block in self.game.fire_list if block not in all_block_owner])
 		self._add_blocks(self.asset_man.skeleton, 	[block for block in self.game.dead_player_list if block not in all_block_owner])
 
@@ -218,7 +221,7 @@ class Client(arcade.Window):
 								font_name='arial',
 								align="center", anchor_x="center", anchor_y="center")
 
-		if self.game.game_ended:
+		if self.game.is_over:
 			progress = 360*(1 - self.end_game_timer / self.end_game_wait_time)
 			sq_size = self.height / 4
 			width = sq_size / 4
@@ -241,7 +244,7 @@ class Client(arcade.Window):
 		if self.paused: # if game has paused then don't update it
 			return
 		
-		game_over = self.game.game_ended
+		game_over = self.game.is_over
 		if game_over:  # Game over count-down
 			self.end_game_timer -= delta_time
 		

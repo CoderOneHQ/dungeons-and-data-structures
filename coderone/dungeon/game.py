@@ -12,6 +12,7 @@ logger = logging.getLogger(__name__)
 
 class DelayedEffectType(Enum):
 	SPAWN_AMMO = 'a'
+	SPAWN_TREASURE = 't'
 
 class PlayerActions(Enum):
 	NO_OP = ''
@@ -57,18 +58,24 @@ class Game:
 	ROW_COUNT = 10
 	COLUMN_COUNT = 12
 
-	SOFTBLOCK_COUNT = 30
-	HARDBLOCK_COUNT = 10
-	PLAYER_START_AMMO = 3
-	FREE_AMMO_COUNT = 1
+	# We have total 12x10 = 120 cells
+	STATIC_BLOCK_COUNT = 18 	# 15% of the board are Indestructible blocks
+	SOFT_BLOCK_COUNT = 30		# 20% of the board are low-value destructable blocks
+	ORE_BLOCK_COUNT = 5			# 5% of the board are Ore blocks
+	TREASURE_SPAWN_FREQUENCY = 6*30 # Once every 180 steps
+
+	PLAYER_START_AMMO = 2		# Amount of ammo a player starts the match with
+	FREE_AMMO_COUNT = 1			# Amount of free ammo, Should be Number of players - 1 - to create resource scarcity
 
 	# Rewards
 	FIRE_PENALTY = 25
 	FIRE_REWARD = 25
-	SOFTBLOCK_REWARD = 2
-	HARDBLOCK_REWARD = 5
+	
+	TREASURE_REWARD = 10
+	SOFT_BLOCK_REWARD = 2
+	ORE_BLOCK_REWARD = 5
 
-	PLAYER_START_HP = 2 # Initial hp of a new player
+	PLAYER_START_HP = 3 # Initial hp of a new player
 	SOFTBLOCK_HP = 1 # Initial hp of a soft block
 	METALBLOCK_HP = 4 # Initial hp of a metal block
 
@@ -153,6 +160,22 @@ class Game:
 		def update(self):
 			pass
 
+
+	class _Treasure(_Destructable):
+		Tag = EntityTags.Treasure.value
+
+		def __init__(self, pos: Point, value: int=None, ttl=1):
+			super().__init__(pos=pos, ttl=1)
+			self.value = value or Game.TREASURE_REWARD
+
+		@property
+		def is_alive(self):
+			return super().is_alive and self.value > 0
+
+		def update(self):
+			pass
+
+
 	class _Bomb(_OwnedPositionedPerishable):
 		Tag = EntityTags.Bomb.value
 
@@ -163,40 +186,189 @@ class Game:
 	class _Fire(_OwnedPositionedPerishable):
 		pass
 
+	class _IndestructibleBlock(_Positioned):
+		Tag = EntityTags.IndestructibleBlock.value
+
 	class _SoftBlock(_Destructable):
 		Tag = EntityTags.SoftBlock.value
 
 		def __init__(self, pos:Point, hp:int):
 			super().__init__(pos=pos, ttl=hp)
-			self.reward = Game.SOFTBLOCK_REWARD
+			self.reward = Game.SOFT_BLOCK_REWARD
 
-	class _MetalBlock(_Destructable):
-		Tag = EntityTags.MetalBlock.value
+	class _OreBlock(_Destructable):
+		Tag = EntityTags.OreBlock.value
 
 		def __init__(self, pos:Point, hp:int):
 			super().__init__(pos=pos, ttl=hp)
-			self.reward = Game.HARDBLOCK_REWARD
+			self.reward = Game.ORE_BLOCK_REWARD
 
 
 	def __init__(self, row_count=ROW_COUNT, column_count=COLUMN_COUNT, max_iterations=None, recorder=Recorder()):
-		self.game_ended = False
 		self.row_count = row_count
 		self.column_count = column_count
 		self.recorder = recorder
 
 		self.ACTION_CODES.setdefault(None)
 
-		self.tick_counter = 0
 		self.max_iterations = max_iterations
 		self._pid_counter = 0
 		self._agents:Dict[PID, Agent] = {}
 
 		self.players:Dict[PID, self._Player] = {}
 		
+		self.tick_counter = 0
 		self._reset_state()
 
+
+	def add_agent(self, agent:Agent, name: Optional[str]) -> PID:
+		""" Add new agent and a corresponding player to play the game
+		"""
+		pid = self.add_player(name)
+
+		self._agents[pid] = agent
+
+		return pid
+
+	def add_player(self, name: Optional[str]) -> PID:
+		""" Add a new player to play the game
+		"""
+		player_id = self._next_pid()
+		name = name or f"P[{player_id}]"
+		self.players[player_id] = self._Player(hp=self.PLAYER_START_HP, pos=None, ammo=self.PLAYER_START_AMMO, name=name, power=self.PLAYER_START_POWER)
+
+		self.recorder.record(self.tick_counter, GameSysAction(GameSysActions.PLAYER_ADDED, name))
+
+		return player_id
+
 	def is_bot(self, pid:int) -> bool:
+		""" Test if a give player_id belongs to the bot or a human player
+		"""
 		return pid in self._agents
+
+
+	def enqueue_action(self, pid:PID, action: PlayerActions):
+		""" Add an action to the queue of player's actions to be executed during next game tick
+		"""
+		if not action:
+			return
+
+		self._action_queue[pid].append(action)
+
+
+	def tick(self, dt:float):
+		""" Advance the state of the game by one step, which is dt sec in time.
+		First, all agents are queried for their inputs based on the serialized state of the game.
+		Then all enqueed player actions are applied first and object positions are updated accordingly.
+
+		"""
+		if not self.is_over:
+			self.tick_counter += 1
+			
+			game_map = self._serialize_state()
+
+			# Gather agents commands
+			for pid, agent in self._agents.items():
+				state = self._player_state(pid, self.players[pid] if pid in self.players else None)
+				self._update_agent(dt, pid, agent, game_map, state)
+
+			# Apply enqueued actions
+			orders_for_tick = []
+			for pid, action_queue in self._action_queue.items():
+				if action_queue:
+					action = action_queue.pop(0)
+					orders_for_tick.append((pid, action))
+			
+			# Randomize the order of actions?
+			random.shuffle(orders_for_tick)
+			for pid, action_queue in orders_for_tick:
+				self._apply_action(pid, action)
+
+		# Apply fire!
+		## Check if any players stepped into a file-zone
+		for pid, player in self._alive_players():
+			hit_list = self._collision_list(player.pos, self.fire_list)
+			for hit in hit_list:
+				fire_owner = self.players[hit.owner_id] if hit.owner_id in self.players else None
+
+				# Apply fire damage to the player
+				player.apply_hit(self.FIRE_HIT)
+
+				player.reward -= self.FIRE_PENALTY
+				if player != fire_owner and fire_owner:
+					fire_owner.reward += self.FIRE_REWARD
+
+
+		## Apply fire damage to static entities
+		for fire in self.fire_list:
+			fire_owner = self.players[fire.owner_id] if fire.owner_id in self.players else None
+			
+			## Check for fire damage of static blocks and collect rewads
+			hitblock_list = self._collision_list(fire.pos, self.value_block_list)
+			for block in hitblock_list:
+				block.apply_hit(self.FIRE_HIT)
+				if not block.is_alive and fire_owner:
+					fire_owner.reward += block.reward
+			
+			## Check for fire damage of nearby bombs and set them off
+			hitbomb_list = self._collision_list(fire.pos, self.bomb_list)
+			for bomb in hitbomb_list:
+				bomb.apply_hit(bomb.hp)
+
+		# Alive players get to pickup static rewards:
+		for pid, player in self._alive_players():
+			if player.is_alive: # Dead players are not allowed to pickup items
+				# Pickup ammo:
+				ammo_found = self._collision_list(player.pos, self.ammunition_list)
+				for am in ammo_found:
+					player.ammo += am.value
+					am.value = 0
+
+				# Pickup treasures:
+				treasure_found = self._collision_list(player.pos, self.treasure_list)
+				for treasure in treasure_found:
+					player.reward += treasure.value
+					treasure.value = 0
+
+		# Update effects and lists
+		self.__update_list(self._delayed_effects)
+		self.__update_list(self.bomb_list)
+		self.__update_list(self.fire_list)
+		self.__update_list(self.ammunition_list)
+		self.__update_list(self.value_block_list)
+		self.__update_list(self.players.values())
+		
+		# Turn not alive player into dead bodies:
+		for pid, player in self.players.items():
+			if not player.is_alive:
+				self.dead_player_list.append(self._DeadBody(pid, player.pos))
+
+		# Convert expired bomb into fire
+		for p in self.bomb_list:
+			if not p.is_alive: # Start a fire
+				self._start_fire(p.owner_id, p.pos, p.power)
+
+		# Apply delayed effects
+		for p in self._delayed_effects:
+			if not p.is_alive: # Apply delayed effect
+				self._apply_effect(p.effect)
+
+		# Remove expired entiries
+		self._delayed_effects = self._only_alive(self._delayed_effects)
+
+		self.ammunition_list =	self._only_alive(self.ammunition_list)
+		self.treasure_list = 	self._only_alive(self.treasure_list)
+		self.bomb_list = 		self._only_alive(self.bomb_list)
+		self.fire_list =		self._only_alive(self.fire_list)
+		self.value_block_list =	self._only_alive(self.value_block_list)
+		#self.players = dict(filter(lambda p: p.is_alive, self.players.values()))
+
+		# Evaluate game termination rule
+		over_iter_limit = True if self.max_iterations and self.tick_counter > self.max_iterations else False
+		has_opponents = sum(p.is_alive for p in self.players.values()) > 1
+		self.is_over = not has_opponents or over_iter_limit # There can be only one!
+		self.winner = next(((pid,p) for pid,p in self.players.items() if p.is_alive), None) if self.is_over else None
+
 
 	def _player_stat(self, pid, player):
 		return {
@@ -208,32 +380,58 @@ class Game:
 			'position': player.pos
 		}
 
+	@property
 	def stats(self):
 		return {
-			'game_over': self.game_ended,
+			'game_over': self.is_over,
 			'iteration': self.tick_counter,
 			'players': { k: self._player_stat(k, p) for k, p in self.players.items() }
 		}
 
+
+	@property
+	def all_blocks(self):
+		return self.static_block_list + self.value_block_list
+
+	@property
+	def all_entities(self):
+		# Combine all alive entities into a single list for quereing by the render engine
+		return \
+			self.static_block_list + \
+			self.ammunition_list + \
+			self.treasure_list + \
+			self.bomb_list + \
+			self.fire_list + \
+			self.value_block_list
+
+
 	def _reset_state(self):
+		self.is_over = False
+		self.winner = None
+
 		# Recet actions queues
 		self._action_queue:Dict[PID, List[PlayerActions]] = defaultdict(lambda: [])
 		self._delayed_effects:List[Game._DelayedEffect] = []
 
+		self.static_block_list:List[Game._IndestructibleBlock] = []
+
 		self.ammunition_list:List[Game._Ammunitation] = []
+		self.treasure_list:List[Game._Treasure] = []
 		self.bomb_list:List[Game._Bomb] = []
 		self.fire_list:List[Game._Fire] = []
-		self.block_list:List[Game._Destructable] = []
+		self.value_block_list:List[Game._Destructable] = []
 		self.dead_player_list:List[Game._DeadBody] = []
 
 		for player in self.players.values():
 			player.ammo = self.PLAYER_START_AMMO
+			player.power = self.PLAYER_START_POWER
 			player.reward = 0
-
-		self.all_entities = []
 
 	def generate_map(self, seed=1):
 		self._reset_state()
+
+		# FIXME: We need to record enqueued delayed effects, otherwise replay won't match
+		self._enqueue_effect(DelayedEffectType.SPAWN_TREASURE, ttl=random.randint(0, self.TREASURE_SPAWN_FREQUENCY))
 
 		all_cells = []
 		for x in range(0, self.column_count):
@@ -258,14 +456,19 @@ class Game:
 					all_cells.remove(e)
 					break
 
-		soft_blocks = random.sample(all_cells, self.SOFTBLOCK_COUNT)
-		for cell in soft_blocks:
-			self.block_list.append(self._SoftBlock(cell, self.SOFTBLOCK_HP))
+		static_blocks = random.sample(all_cells, self.STATIC_BLOCK_COUNT)
+		for cell in static_blocks:
+			self.static_block_list.append(self._IndestructibleBlock(cell))
 			all_cells.remove(cell)
 
-		metal_blocks = random.sample(all_cells, self.HARDBLOCK_COUNT)
-		for cell in metal_blocks:
-			self.block_list.append(self._MetalBlock(cell, self.METALBLOCK_HP))
+		soft_blocks = random.sample(all_cells, self.SOFT_BLOCK_COUNT)
+		for cell in soft_blocks:
+			self.value_block_list.append(self._SoftBlock(cell, self.SOFTBLOCK_HP))
+			all_cells.remove(cell)
+
+		ore_blocks = random.sample(all_cells, self.ORE_BLOCK_COUNT)
+		for cell in ore_blocks:
+			self.value_block_list.append(self._OreBlock(cell, self.METALBLOCK_HP))
 			all_cells.remove(cell)
 
 		free_ammo = random.sample(all_cells, self.FREE_AMMO_COUNT)
@@ -273,38 +476,44 @@ class Game:
 			self.ammunition_list.append(self._Ammunitation(cell))
 			all_cells.remove(cell)
 
-		self.all_entities = self.bomb_list + self.fire_list + self.ammunition_list + self.block_list
 		self.recorder.record(self.tick_counter, GameSysAction(GameSysActions.MAP, self._serialize_map()))
 
 	def _serialize_state(self) -> GameState:
 		return GameState(
-				is_over=self.game_ended,
+				is_over=self.is_over,
 				tick_number=self.tick_counter, 
 				size=(self.row_count, self.column_count),
 				
 				game_map=self._serialize_map(),
 				ammo=[a.pos for a in self.ammunition_list].copy(),
+				treasure=[a.pos for a in self.treasure_list].copy(),
 				bombs=[a.pos for a in self.bomb_list].copy(),
-				blocks=[(block.Tag, block.pos) for block in self.block_list].copy(),
+				# TODO: Static blocks!
+				blocks=[(block.Tag, block.pos) for block in self.value_block_list].copy(),
 				players=[(pid, player.pos) for pid, player in self.players.items()].copy(),
 			)
 
 	def _serialize_map(self):
-		# Create an occupancy map for AI-agents to base decisions on
+		# Build an occupancy map for AI-agents to base decisions on
 		game_map ={}
 
 		def __set_tag(pos, tag):
 			game_map.setdefault(pos[0], {})
 			game_map[pos[0]][pos[1]] = tag
 
-		# updating the ascii map with players
 		for pid, player in self.players.items():
 			__set_tag(player.pos, pid)
 
-		for item in self.block_list:
+		for item in self.static_block_list:
+			__set_tag(item.pos, item.Tag)
+
+		for item in self.value_block_list:
 			__set_tag(item.pos, item.Tag)
 
 		for item in self.ammunition_list:
+			__set_tag(item.pos, item.Tag)
+
+		for item in self.treasure_list:
 			__set_tag(item.pos, item.Tag)
 
 		for item in self.bomb_list:
@@ -323,20 +532,12 @@ class Game:
 		pid, self._pid_counter = self._pid_counter, self._pid_counter + 1
 		return pid
 
-	def _enqueue_effect(self, effect: _DelayedEffect):
-		if not effect:
+	def _enqueue_effect(self, effect: DelayedEffectType, ttl:int):
+		if not effect or ttl <= 0:
 			return
 
-		self._delayed_effects.append(effect)
+		self._delayed_effects.append(self._DelayedEffect(effect=effect, ttl=ttl))
 
-
-	def enqueue_action(self, pid:PID, action: PlayerActions):
-		""" Add action to the queue of player actions
-		"""
-		if not action:
-			return
-
-		self._action_queue[pid].append(action)
 
 	def _apply_action(self, pid: PID, action: PlayerActions) -> bool:
 		self.recorder.record(self.tick_counter, PlayerMove(pid=pid, action=action))
@@ -362,7 +563,8 @@ class Game:
 	def _apply_effect(self, effect: DelayedEffectType):
 		if not effect: return
 
-		if effect == DelayedEffectType.SPAWN_AMMO: self._spawn_ammo()
+		if 	effect == DelayedEffectType.SPAWN_AMMO: self._spawn_ammo()
+		elif effect == DelayedEffectType.SPAWN_TREASURE: self._spawn_treasure()
 		else:
 			logger.error(f"Attempt to apply unknown effect: '{effect}'")
 			# TODO: Record cheeting attempt
@@ -374,122 +576,8 @@ class Game:
 	def _only_alive(self, items):
 		return [i for i in items if i.is_alive]
 
-	def _alive_players(self):
+	def _alive_players(self) -> List[Tuple[PID, _Player]]:
 		return [(pid,p) for pid,p in self.players.items() if p.is_alive]
-
-	def tick(self, dt:float):
-		if not self.game_ended:
-			self.tick_counter += 1
-			
-			game_map = self._serialize_state()
-
-			# Gather agents commands
-			for pid, agent in self._agents.items():
-				state = self._player_state(pid, self.players[pid] if pid in self.players else None)
-				self._update_agent(dt, pid, agent, game_map, state)
-
-			# Apply enqueued actions
-			orders_for_tick = []
-			for pid, action_queue in self._action_queue.items():
-				if action_queue:
-					action = action_queue.pop(0)
-					orders_for_tick.append((pid, action))
-			
-			# Randomize the order of actions?
-			random.shuffle(orders_for_tick)
-			for pid, action_queue in orders_for_tick:
-				self._apply_action(pid, action)
-
-		# Apply fire!
-		for pid, player in self._alive_players():
-			hit_list = self._collision_list(player.pos, self.fire_list)
-			for hit in hit_list:
-				fire_owner = self.players[hit.owner_id] if hit.owner_id in self.players else None
-
-				# Apply fire damage to the player
-				player.apply_hit(self.FIRE_HIT)
-
-				player.reward -= self.FIRE_PENALTY
-				if player != fire_owner and fire_owner:
-					fire_owner.reward += self.FIRE_REWARD
-
-
-		for fire in self.fire_list:
-			fire_owner = self.players[fire.owner_id] if fire.owner_id in self.players else None
-			
-			hitblock_list = self._collision_list(fire.pos, self.block_list)
-			for block in hitblock_list:
-				block.apply_hit(self.FIRE_HIT)
-				if not block.is_alive and fire_owner:
-					fire_owner.reward += block.reward
-			
-			hitbomb_list = self._collision_list(fire.pos, self.bomb_list)
-			for bomb in hitbomb_list:
-				bomb.apply_hit(bomb.hp)
-
-		# Pickup ammo:
-		for pid, player in self._alive_players():
-			if player.is_alive: # Dead players are not allowed to pickup items
-				ammo_found = self._collision_list(player.pos, self.ammunition_list)
-				for am in ammo_found:
-					player.ammo += am.value
-					am.value = 0
-
-		# Update effects and lists
-		self.__update_list(self._delayed_effects)
-		self.__update_list(self.bomb_list)
-		self.__update_list(self.fire_list)
-		self.__update_list(self.ammunition_list)
-		self.__update_list(self.block_list)
-		self.__update_list(self.players.values())
-		
-		# Turn not alive player into dead bodies:
-		for pid, player in self.players.items():
-			if not player.is_alive:
-				self.dead_player_list.append(self._DeadBody(pid, player.pos))
-
-		# Convert expired bomb into fire
-		for p in self.bomb_list:
-			if not p.is_alive: # Start a fire
-				self._start_fire(p.owner_id, p.pos, p.power)
-
-		# Apply delayed effects
-		for p in self._delayed_effects:
-			if not p.is_alive: # Apply delayed effect
-				self._apply_effect(p.effect)
-
-		# Remove expired entiries
-		self._delayed_effects = self._only_alive(self._delayed_effects)
-
-		self.bomb_list = 		self._only_alive(self.bomb_list)
-		self.fire_list =		self._only_alive(self.fire_list)
-		self.bomb_listammunition_list =	self._only_alive(self.ammunition_list)
-		self.block_list =		self._only_alive(self.block_list)
-		#self.players = dict(filter(lambda p: p.is_alive, self.players.values()))
-
-		# Combine all alive entities into a single list for quereing by the render engine
-		self.all_entities = self.bomb_list + self.fire_list + self.ammunition_list + self.block_list
-
-		# Evaluate game termination rule
-		over_iter_limit = True if self.max_iterations and self.tick_counter > self.max_iterations else False
-		has_opponents = sum(p.is_alive for p in self.players.values()) > 1
-		self.game_ended = not has_opponents or over_iter_limit # There can be only one! 
-
-	def add_agent(self, agent:Agent, name: Optional[str]) -> PID:
-		pid = self.add_player(name)
-
-		self._agents[pid] = agent
-
-		return pid
-
-	def add_player(self, name: Optional[str]) -> PID:
-		player_id = self._next_pid()
-		name = name or f"P[{player_id}]"
-		self.players[player_id] = self._Player(hp=self.PLAYER_START_HP, pos=None, ammo=self.PLAYER_START_AMMO, name=name, power=self.PLAYER_START_POWER)
-
-		self.recorder.record(self.tick_counter, GameSysAction(GameSysActions.PLAYER_ADDED, name))
-
-		return player_id
 
 	def _update_agent(self, delta_time: float, pid, agent, game_map, state):
 		player = self.players[pid] if pid in self.players else None
@@ -511,7 +599,7 @@ class Game:
 		if not self._is_in_bounds(pos):
 			return False
 		
-		if self._collision_list(pos, self.block_list) or self._collision_list(pos, self.bomb_list):
+		if self._collision_list(pos, self.all_blocks) or self._collision_list(pos, self.bomb_list):
 			self.fire_list.append(self._Fire(owner_pid, pos))
 			return False
 
@@ -548,7 +636,7 @@ class Game:
 		# TODO Update occupancy greed
 
 		# Schedule respawn of an ammo for the next turn
-		self._enqueue_effect(self._DelayedEffect(effect=DelayedEffectType.SPAWN_AMMO, ttl=self.AMMO_RESPAWN_TTL))
+		self._enqueue_effect(DelayedEffectType.SPAWN_AMMO, ttl=self.AMMO_RESPAWN_TTL)
 
 		return True
 
@@ -561,7 +649,7 @@ class Game:
 		
 		return True
 
-	def _spawn_ammo(self):
+	def _pick_good_spots(self):
 		all_cells = []
 
 		def __safe_remove(pos):
@@ -579,25 +667,50 @@ class Game:
 			__safe_remove(player.pos)
 
 		# Don't spawn ammo on top of a block
-		for block in self.block_list:
+		for block in self.all_blocks:
 			__safe_remove(block.pos)
 
 		# Don't spawn ammo on top of another ammo
 		for ammo in self.ammunition_list:
 			__safe_remove(ammo.pos)
 
+		# Don't spawn ammo on top of treasure ammo
+		for ammo in self.treasure_list:
+			__safe_remove(ammo.pos)
+
 		# Don't spawn ammo on top of a bomb
 		for ammo in self.bomb_list:
 			__safe_remove(ammo.pos)
 
-		loc = random.choice(all_cells)
-		self.ammunition_list.append(Game._Ammunitation(loc))
+		return all_cells
 
+	def _spawn_treasure(self):
+		good_locations = self._pick_good_spots()
+		if not good_locations:
+			self._enqueue_effect(DelayedEffectType.SPAWN_TREASURE, ttl=random.randint(0, self.TREASURE_SPAWN_FREQUENCY))
+			return False
+
+		loc = random.choice(good_locations)
+		self.treasure_list.append(Game._Treasure(loc))
+		self._enqueue_effect(DelayedEffectType.SPAWN_TREASURE, ttl=random.randint(0, self.TREASURE_SPAWN_FREQUENCY))
+
+		return True
+	
+	def _spawn_ammo(self):
+		good_locations = self._pick_good_spots()
+		if not good_locations:
+			self._enqueue_effect(DelayedEffectType.SPAWN_AMMO, ttl=self.AMMO_RESPAWN_TTL)
+			return False
+
+		loc = random.choice(good_locations)
+		self.ammunition_list.append(Game._Ammunitation(loc))
+		
+		return True
 
 	def _has_collision(self, pos:Point) -> bool:
 		""" It checks if a player can move to a new location"""
 		# Check if given postion overlaps with any of the blocks
-		hit_list = self._collision_list(pos, self.block_list)
+		hit_list = self._collision_list(pos, self.all_blocks)
 
 		# Check if given postion overlaps with any of the players
 		# This makes players non-clipable

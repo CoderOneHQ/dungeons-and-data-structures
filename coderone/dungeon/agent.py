@@ -7,9 +7,11 @@ PID = int
 
 class EntityTags(Enum):
 	Ammo = "a"
+	Treasure = 't'
 	Bomb = "b"
 	SoftBlock = 'sb'
-	MetalBlock = 'mb'
+	OreBlock = 'ob'
+	IndestructibleBlock = 'ib'
 
 class GameState:
 	""" A state of the game as viewed by an agent.
@@ -18,6 +20,7 @@ class GameState:
 
 	def __init__(self, is_over:bool, tick_number:int, size:Point, 
 				game_map:Dict,
+				treasure:List[Point],
 				ammo:List[Point],
 				bombs:List[Point],
 				blocks,
@@ -27,6 +30,7 @@ class GameState:
 		self.tick_number = tick_number
 		self.size = size
 		self._game_map = game_map
+		self._treasure = treasure
 		self._ammo = ammo
 		self._bombs = bombs
 		self._blocks = blocks
@@ -48,6 +52,10 @@ class GameState:
 	@property
 	def ammo(self) -> List[Point]:
 		return self._ammo
+
+	@property
+	def treasure(self) -> List[Point]:
+		return self._treasure
 
 	@property
 	def all_blocks(self) -> List[Point]:

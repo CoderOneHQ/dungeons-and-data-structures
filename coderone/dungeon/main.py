@@ -68,6 +68,7 @@ def __load_or_generate_config(args, config_file:Optional[str]) -> dict:
 			}
 
 			os.makedirs(config_dir, exist_ok=True)
+			logger.warning(f"Writing default config into: {config_file}")
 			with open(config_file, "w") as f:
 				json.dump(config_data, f, indent=4, sort_keys=True)
 		
@@ -178,7 +179,7 @@ def run(agent_modules, headless=False, watch=False, interactive=False, config=No
 			window.run(tick_step)
 
 		# Announce game winner and exit
-		results = game.stats()
+		results = game.stats
 		print(json.dumps(results, indent=4, sort_keys=True))
 
 	# We done here, all good.
