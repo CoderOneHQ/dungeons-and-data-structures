@@ -62,7 +62,6 @@ class Game:
 	STATIC_BLOCK_COUNT = 18 	# 15% of the board are Indestructible blocks
 	SOFT_BLOCK_COUNT = 30		# 20% of the board are low-value destructable blocks
 	ORE_BLOCK_COUNT = 5			# 5% of the board are Ore blocks
-	TREASURE_SPAWN_FREQUENCY = 6*30 # Once every 180 steps
 
 	PLAYER_START_AMMO = 2		# Amount of ammo a player starts the match with
 	FREE_AMMO_COUNT = 1			# Amount of free ammo, Should be Number of players - 1 - to create resource scarcity
@@ -83,7 +82,10 @@ class Game:
 
 	PLAYER_START_POWER = 2 # Initial blast radius
 	BOMB_TTL = 35 # Number of turns before bomb expires
+
 	AMMO_RESPAWN_TTL = 2*BOMB_TTL # Number of turns before ammo respawns
+	TREASURE_SPAWN_FREQUENCY_MIN = 5*10 	# Once every 180 steps
+	TREASURE_SPAWN_FREQUENCY_MAX = 25*10 	# Once every 180 steps
 	
 
 	ACTION_CODES = {
@@ -431,7 +433,7 @@ class Game:
 		self._reset_state()
 
 		# FIXME: We need to record enqueued delayed effects, otherwise replay won't match
-		self._enqueue_effect(DelayedEffectType.SPAWN_TREASURE, ttl=random.randint(0, self.TREASURE_SPAWN_FREQUENCY))
+		self._enqueue_effect(DelayedEffectType.SPAWN_TREASURE, ttl=random.randint(self.TREASURE_SPAWN_FREQUENCY_MIN, self.TREASURE_SPAWN_FREQUENCY_MAX))
 
 		all_cells = []
 		for x in range(0, self.column_count):
@@ -687,12 +689,12 @@ class Game:
 	def _spawn_treasure(self):
 		good_locations = self._pick_good_spots()
 		if not good_locations:
-			self._enqueue_effect(DelayedEffectType.SPAWN_TREASURE, ttl=random.randint(0, self.TREASURE_SPAWN_FREQUENCY))
+			self._enqueue_effect(DelayedEffectType.SPAWN_TREASURE, ttl=random.randint(1, self.TREASURE_SPAWN_FREQUENCY_MIN))
 			return False
 
 		loc = random.choice(good_locations)
 		self.treasure_list.append(Game._Treasure(loc))
-		self._enqueue_effect(DelayedEffectType.SPAWN_TREASURE, ttl=random.randint(0, self.TREASURE_SPAWN_FREQUENCY))
+		self._enqueue_effect(DelayedEffectType.SPAWN_TREASURE, ttl=random.randint(self.TREASURE_SPAWN_FREQUENCY_MIN, self.TREASURE_SPAWN_FREQUENCY_MAX))
 
 		return True
 	

@@ -44,7 +44,7 @@ class Client:
 
 	def _run(self, tick_step):
 		try:
-			while not self.game.game_ended:
+			while not self.game.is_over:
 				logger.info(f"Game step [{self.game.tick_counter}/{self.game.max_iterations}]... ")
 				
 				cycle_start_time = time.time()
