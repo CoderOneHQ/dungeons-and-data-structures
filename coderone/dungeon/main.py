@@ -29,8 +29,8 @@ DEFAULT_CONFIG_FILE = 'config.json'
 SCREEN_TITLE = "Coder One: Dungeons & Data Structures"
 
 
-TICK_STEP = 0.1 		# Number of seconds per 1 iteration of game loop
-ITERATION_LIMIT = 3*60*10 	# Max number of iteration the game should go on for, None for unlimited
+TICK_STEP = 0.1 			# Number of seconds per 1 iteration of game loop
+ITERATION_LIMIT = 200*10 	# Max number of iteration the game should go on for, None for unlimited
 
 logger = logging.getLogger()
 logging.basicConfig(stream=sys.stdout, level=logging.INFO)
@@ -80,6 +80,10 @@ def __load_or_generate_config(args, config_file:Optional[str]) -> dict:
 	config_data.setdefault('update_time_step', TICK_STEP)
 	config_data.setdefault('hack', args.hack or False)
 	config_data.setdefault('no_text', False)  # A work around Pillow (Python image library) bug	
+	
+	config_data.setdefault('rows', Game.ROW_COUNT)
+	config_data.setdefault('columns', Game.COLUMN_COUNT)
+	config_data.setdefault('max_iterations', ITERATION_LIMIT)
 
 	return config_data
 
@@ -136,9 +140,9 @@ def __load_agent_drivers(cntx: ExitStack, agent_modules, config:dict, watch=Fals
 
 def run(agent_modules, headless=False, watch=False, interactive=False, config=None, recorder=None):
 	# Create a new game
-	row_count = config.get('rows', Game.ROW_COUNT)
-	column_count = config.get('columns', Game.COLUMN_COUNT)
-	iteration_limit = config.get('max_iterations', ITERATION_LIMIT)
+	row_count = config.get('rows')
+	column_count = config.get('columns')
+	iteration_limit = config.get('max_iterations')
 	is_interactive = interactive or config.get('interactive')
 
 	# Load agent modules

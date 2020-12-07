@@ -94,6 +94,8 @@ class Game:
 		'l': PlayerActions.MOVE_LEFT,
 		'r': PlayerActions.MOVE_RIGHT,
 		'p': PlayerActions.PLACE_BOMB,
+		'b': PlayerActions.PLACE_BOMB,
+		'can_haz_boom': PlayerActions.PLACE_BOMB,
 		}
 
 	class _Positioned:
@@ -484,7 +486,7 @@ class Game:
 		return GameState(
 				is_over=self.is_over,
 				tick_number=self.tick_counter, 
-				size=(self.row_count, self.column_count),
+				size=(self.column_count, self.row_count),
 				
 				game_map=self._serialize_map(),
 				ammo=[a.pos for a in self.ammunition_list].copy(),
