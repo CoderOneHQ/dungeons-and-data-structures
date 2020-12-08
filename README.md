@@ -54,9 +54,9 @@ use  `python -m coderone.dungeon.main --help` to get a list of supported options
 * `--record <FILE>` - record game action into a specified file for later review.
 
 
-### Intractive mode keys:
+### Interactive mode keys:
 * `Enter` - to pause / un-pause the game
-* `Shit+R` - to restart the game with new random map
+* `r` - to restart the game with new random map
 * `↑` / `↓` / `←` / `→` - arrows to move the player
 * `<SPACE>` - to place the bomb
 
@@ -104,6 +104,12 @@ Add the following option to your `config.json`
 
 This options disables all texts in the game which resolves library crashes.
 
+On ARM you python Arcade fails to install without FFI. Install it via:
+```shell
+> sudo apt install libffi-dev libtiff5-dev libjpeg8-dev libopenjp2-7-dev zlib1g-dev \
+    libfreetype6-dev liblcms2-dev libwebp-dev tcl8.6-dev tk8.6-dev python3-tk \
+    libharfbuzz-dev libfribidi-dev libxcb1-dev
+```
 
 ## Development
 
@@ -116,7 +122,6 @@ Open termnial and run following commands
 > cd <git check-out>
 > python3 -m venv venv
 > source venv/bin/activate
-> pip install -r coderone/requirements.txt
 > pip install -r coderone/dungeon/requirements.txt
  
 ```

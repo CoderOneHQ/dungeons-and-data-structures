@@ -29,7 +29,7 @@ class GameState:
 				):
 		self.is_over = is_over
 		self.tick_number = tick_number
-		self.size = size
+		self._size = size
 		self._game_map = game_map
 		self._treasure = treasure
 		self._ammo = ammo
@@ -39,10 +39,10 @@ class GameState:
 
 
 	@property
-	def map_size(self) -> Point:
+	def size(self) -> Point:
 		"""Get the size of the map area as a 'Point' tuple
 		"""
-		return self.size
+		return self._size
 
 	@property
 	def ammo(self) -> List[Point]:

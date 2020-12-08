@@ -5,7 +5,7 @@ with open("README.md", "r", encoding="utf-8") as fh:
 
 setuptools.setup(
 	name='coderone-challenge-dungeons',
-	version='0.1.3.dev4',
+	version='0.1.3.dev6',
 	description='Dungeons and data structures: Coder one AI Game Tournament',
 	url='https://github.com/gocoderone/dungeons-and-data-structures',
 	author='Ivan Ryabov',
@@ -19,6 +19,7 @@ setuptools.setup(
         "Operating System :: OS Independent",
     ],
 	install_requires=[
+		'pymunk==5.7.0',
 		'appdirs==1.4.4',
 		'arcade==2.4.3',
 		'watchdog==0.10.4',

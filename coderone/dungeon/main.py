@@ -179,7 +179,7 @@ def run(agent_modules, headless=False, watch=False, interactive=False, config=No
 				screen_width =  PADDING[0]*2 + WIDTH * 12
 				screen_height = PADDING[1]*3 + HEIGHT * 10
 
-			window = Client(width=screen_width, height=screen_height, title=SCREEN_TITLE, game=game, config=config, intractive=is_interactive, user_pid=user_pid)
+			window = Client(width=screen_width, height=screen_height, title=SCREEN_TITLE, game=game, config=config, interactive=is_interactive, user_pid=user_pid)
 			window.run(tick_step)
 
 		# Announce game winner and exit
@@ -216,6 +216,10 @@ def main():
 	args = parser.parse_args()
 
 	config = __load_or_generate_config(args, args.config)
+
+	if args.headless and args.interactive:
+		print("Interactive play is not support in headless mode. Exiting", file=sys.stderr)
+		sys.exit(1)
 
 	if args.headless and len(args.agents) < 2:
 		print("At least 2 agents must be provided in the match mode. Exiting", file=sys.stderr)

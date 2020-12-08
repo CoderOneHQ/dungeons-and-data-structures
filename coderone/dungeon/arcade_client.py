@@ -71,7 +71,7 @@ class Client(arcade.Window):
 		tile.set_position(x,y)
 		self.chrome_tiles.append(tile)
 
-	def __init__(self, width:int, height:int, title:str, game:Game, config, intractive:bool, user_pid:PID):
+	def __init__(self, width:int, height:int, title:str, game:Game, config, interactive:bool, user_pid:PID):
 		"""
 		Set up the application.
 		"""
@@ -81,7 +81,7 @@ class Client(arcade.Window):
 		self.asset_man = AssetManager(config.get('assets'))
 		self.game = game
 		self.user_pid = user_pid
-		self.intractive = intractive
+		self.interactive = interactive
 		self.paused = self.app_config.get('start_paused', False)
 		self.end_game_wait_time = self.app_config.get('wait_end', 10)
 		self.end_game_timer = self.end_game_wait_time
@@ -157,7 +157,7 @@ class Client(arcade.Window):
 		self.block_list.extend(map(lambda block: StaticSprite(self.asset_man.ore_block if block.hp > 1 else self.asset_man.soft_block, block, 4.0), self.game.value_block_list))
 
 		self._add_blocks(self.asset_man.ammunition, self.game.ammunition_list, 1)
-		self._add_blocks(self.asset_man.treasure, 	self.game.treasure_list)
+		self._add_blocks(self.asset_man.treasure, 	self.game.treasure_list, 1)
 		self._add_blocks(self.asset_man.bomb, 		self.game.bomb_list, 1)
 		self._add_blocks(self.asset_man.fire, 		self.game.fire_list)
 		self._add_blocks(self.asset_man.skeleton, 	self.game.dead_player_list)
@@ -170,7 +170,7 @@ class Client(arcade.Window):
 
 		all_block_owner = [sprite.owner for sprite in self.block_list]
 		self._add_blocks(self.asset_man.ammunition, [block for block in self.game.ammunition_list if block not in all_block_owner], 1)
-		self._add_blocks(self.asset_man.treasure, 	[block for block in self.game.treasure_list if block not in all_block_owner])
+		self._add_blocks(self.asset_man.treasure, 	[block for block in self.game.treasure_list if block not in all_block_owner], 1)
 		self._add_blocks(self.asset_man.bomb, 		[block for block in self.game.bomb_list if block not in all_block_owner], 1)
 		self._add_blocks(self.asset_man.fire, 		[block for block in self.game.fire_list if block not in all_block_owner])
 		self._add_blocks(self.asset_man.skeleton, 	[block for block in self.game.dead_player_list if block not in all_block_owner])
@@ -264,14 +264,14 @@ class Client(arcade.Window):
 		if key == arcade.key.ENTER:
 			self.paused = not self.paused
 
-		if self.intractive and key == arcade.key.R and modifiers == arcade.key.MOD_SHIFT:
+		if self.interactive and key == arcade.key.R:
 			self.paused = True
 			self.end_game_timer = self.end_game_wait_time
 			self.game.generate_map()
 			self._map_game()
 
 		# Next command are only accepted if game is not paused:
-		if self.paused or not self.intractive or not self.user_pid:
+		if self.paused or not self.interactive or not self.user_pid:
 			return
 
 		if key == arcade.key.UP or key == arcade.key.W:

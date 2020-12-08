@@ -8,6 +8,7 @@ from collections import defaultdict
 from .agent import Agent, Point, PID, EntityTags, GameState, PlayerState
 
 logger = logging.getLogger(__name__)
+# logger.setLevel(logging.DEBUG)
 
 
 class DelayedEffectType(Enum):
@@ -60,28 +61,28 @@ class Game:
 
 	# We have total 12x10 = 120 cells
 	STATIC_BLOCK_COUNT = 18 	# 15% of the board are Indestructible blocks
-	SOFT_BLOCK_COUNT = 30		# 20% of the board are low-value destructable blocks
+	SOFT_BLOCK_COUNT = 20		# 20% of the board are low-value destructable blocks
 	ORE_BLOCK_COUNT = 5			# 5% of the board are Ore blocks
 
-	PLAYER_START_AMMO = 2		# Amount of ammo a player starts the match with
+	PLAYER_START_AMMO = 3		# Amount of ammo a player starts the match with
 	FREE_AMMO_COUNT = 1			# Amount of free ammo, Should be Number of players - 1 - to create resource scarcity
 
-	# Rewards
-	FIRE_PENALTY = 25
+	# Rewards and punishment
+	FIRE_PENALTY = 0
 	FIRE_REWARD = 25
 	
-	TREASURE_REWARD = 10
+	TREASURE_REWARD = 1
 	SOFT_BLOCK_REWARD = 2
-	ORE_BLOCK_REWARD = 5
+	ORE_BLOCK_REWARD = 10
 
 	PLAYER_START_HP = 3 # Initial hp of a new player
-	SOFTBLOCK_HP = 1 # Initial hp of a soft block
-	METALBLOCK_HP = 4 # Initial hp of a metal block
+	SOFTBLOCK_HP = 1	# Initial hp of a soft block
+	ORE_BLOCK_HP = 3	# Initial hp of a ore block
 
 	FIRE_HIT = 1 # Number of hit points taken by the fire
 
 	PLAYER_START_POWER = 2 # Initial blast radius
-	BOMB_TTL = 35 # Number of turns before bomb expires
+	BOMB_TTL = 32 # Number of turns before bomb expires
 
 	AMMO_RESPAWN_TTL = 2*BOMB_TTL # Number of turns before ammo respawns
 	TREASURE_SPAWN_FREQUENCY_MIN = 5*10 	# Once every 180 steps
@@ -267,14 +268,11 @@ class Game:
 
 		"""
 		if not self.is_over:
-			self.tick_counter += 1
-			
-			game_map = self._serialize_state()
-
 			# Gather agents commands
 			for pid, agent in self._agents.items():
-				state = self._player_state(pid, self.players[pid] if pid in self.players else None)
-				self._update_agent(dt, pid, agent, game_map, state)
+				action = self._get_agent_input(pid, agent)
+				if action: 
+					self.enqueue_action(pid, action)
 
 			# Apply enqueued actions
 			orders_for_tick = []
@@ -285,7 +283,7 @@ class Game:
 			
 			# Randomize the order of actions?
 			random.shuffle(orders_for_tick)
-			for pid, action_queue in orders_for_tick:
+			for pid, action in orders_for_tick:
 				self._apply_action(pid, action)
 
 		# Apply fire!
@@ -373,6 +371,14 @@ class Game:
 		self.is_over = not has_opponents or over_iter_limit # There can be only one!
 		self.winner = next(((pid,p) for pid,p in self.players.items() if p.is_alive), None) if self.is_over else None
 
+		if not self.is_over:		
+			game_state = self._serialize_state()
+			# Update agents view of the world
+			for pid, agent in self._agents.items():
+				self._update_agent(dt, pid, agent, game_state)
+
+		self.tick_counter += 1
+
 
 	def _player_stat(self, pid, player):
 		return {
@@ -430,6 +436,8 @@ class Game:
 			player.ammo = self.PLAYER_START_AMMO
 			player.power = self.PLAYER_START_POWER
 			player.reward = 0
+			player._ttl = self.PLAYER_START_HP
+
 
 	def generate_map(self, seed=1):
 		self._reset_state()
@@ -472,7 +480,7 @@ class Game:
 
 		ore_blocks = random.sample(all_cells, self.ORE_BLOCK_COUNT)
 		for cell in ore_blocks:
-			self.value_block_list.append(self._OreBlock(cell, self.METALBLOCK_HP))
+			self.value_block_list.append(self._OreBlock(cell, self.ORE_BLOCK_HP))
 			all_cells.remove(cell)
 
 		free_ammo = random.sample(all_cells, self.FREE_AMMO_COUNT)
@@ -582,21 +590,36 @@ class Game:
 	def _alive_players(self) -> List[Tuple[PID, _Player]]:
 		return [(pid,p) for pid,p in self.players.items() if p.is_alive]
 
-	def _update_agent(self, delta_time: float, pid, agent, game_map, state):
+	def _get_agent_input(self, pid, agent):
 		player = self.players[pid] if pid in self.players else None
 		if not player or not player.is_alive:
 			return
-		
+
 		logger.debug(f"[{player.name}] agent move....")
-		chosen_move = agent.next_move(game_map, state)
+		chosen_move = agent.next_move()
 		logger.debug(f"[{player.name}] agent move -> [{chosen_move}]")
 
-		action = self.ACTION_CODES[chosen_move] if chosen_move in self.ACTION_CODES else None
-		if action: 
-			self.enqueue_action(pid, action)
+		if not chosen_move:
+			return # NO-OP action
+
+		if chosen_move not in self.ACTION_CODES:
+			logger.warn(f"Agent for '[{player.name}]' produced unxepected move '{chosen_move}', ignoring")
+			return 
+
+		return self.ACTION_CODES[chosen_move] if chosen_move in self.ACTION_CODES else None
+
+	def _update_agent(self, delta_time: float, pid, agent, game_map):
+		player = self.players[pid] if pid in self.players else None
+		if not player or not player.is_alive:
+			return
+
+		player_state = self._player_state(pid, player)
+		agent.update(game_map, player_state)
+
 
 	def _player_state(self, id:PID, player:_Player):
-		return PlayerState(id=id, ammo=player.ammo, hp=player.hp, location=player.pos, reward=player.reward, power=player.power)
+		return PlayerState(id=id, ammo=player.ammo, hp=player.hp, location=player.pos, reward=player.reward, power=player.power) \
+			if player else None
 
 	def _try_add_fire(self, owner_pid:PID, pos:Point) -> bool:
 		if not self._is_in_bounds(pos):

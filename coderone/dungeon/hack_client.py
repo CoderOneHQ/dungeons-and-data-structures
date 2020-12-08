@@ -11,10 +11,11 @@ logger = logging.getLogger(__name__)
 
 
 class Client:
-	def __init__(self, width:int, height:int, title:str, game=None, config=None, intractive:bool=False, user_pid:PID=None):
+	def __init__(self, width:int, height:int, title:str, game=None, config=None, interactive:bool=False, user_pid:PID=None):
 		self.title = title
 		self.game = game
 		self.config = config
+		self.interactive = interactive
 
 	def _update(self, tick_step):
 		self.game.tick(tick_step)

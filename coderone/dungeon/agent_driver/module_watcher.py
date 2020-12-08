@@ -9,7 +9,7 @@ from watchdog.events import FileSystemEventHandler
 from watchdog.events import RegexMatchingEventHandler
 
 logger = logging.getLogger(__name__)
-logger.setLevel(logging.DEBUG)
+# logger.setLevel(logging.DEBUG)
 
 class FileEventHandler(FileSystemEventHandler):
 # class FileEventHandler(RegexMatchingEventHandler):

@@ -1,29 +1,28 @@
 import importlib
 
+from ..agent import Agent as AIAgent
 from .agent import ModuleProxy
 from .module_watcher import ModuleWatcher
 
 class Driver:
 
-	def __init__(self, name:str, watch: bool = False, config={}):
+	def __init__(self, name:str, watch: bool = False, config=None):
 		self.name = name
 		self.watcher = name
-		self.agent_module = importlib.import_module(name)
 		
-		if watch:
-			proxy = ModuleProxy(self.agent_module)
-			
+		module = importlib.import_module(name)
+		self.agent_module = ModuleProxy(module)
+		
+		if watch:			
 			self.watcher = ModuleWatcher()
-			self.watcher.watch_module(self.agent_module, proxy.on_reload)
+			self.watcher.watch_module(module, self.agent_module.on_reload)
 			self.watcher.start_watching()
-
-			self.agent_module = proxy
 
 	def stop(self):
 		if self.watcher:
 			self.watcher.stop_watching()
 
-	def agent(self):
+	def agent(self) -> AIAgent:
 		return self.agent_module.agent() if self.agent_module else None
 
 	def __enter__(self):
