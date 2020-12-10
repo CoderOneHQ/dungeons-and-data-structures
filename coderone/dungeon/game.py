@@ -3,6 +3,7 @@ import logging
 
 from enum import Enum
 from typing import Dict, List, Tuple, Union, NamedTuple, Any, Optional
+# from dataclasses import dataclass
 from collections import defaultdict
 
 from .agent import Agent, Point, PID, EntityTags, GameState, PlayerState
@@ -38,6 +39,23 @@ class PlayerMove(NamedTuple):
 GameEvent = Union[GameSysActions, PlayerMove]
 
 
+# @dataclass
+class PlayerStat(NamedTuple):
+	name: str
+	is_bot: bool
+	score: int
+	hp: int
+	ammo: int
+	position: Point
+
+# @dataclass
+class GameStats(NamedTuple):
+	is_over: bool
+	iteration:int
+	winner_pid: PID
+	players: Dict[PID, PlayerStat]
+
+
 def collide(pos1:Point, pos2:Point) -> bool: 
 	return (pos1[0] == pos2[0]) and (pos1[1] == pos2[1])
 
@@ -51,6 +69,8 @@ class Recorder:
 
 	def __exit__(self, exc_type, exc_value, traceback):
 		pass
+
+
 
 class Game:
 	"""Game class defining game rules
@@ -82,7 +102,7 @@ class Game:
 	FIRE_HIT = 1 # Number of hit points taken by the fire
 
 	PLAYER_START_POWER = 2 # Initial blast radius
-	BOMB_TTL = 32 # Number of turns before bomb expires
+	BOMB_TTL = 35 # Number of turns before bomb expires
 
 	AMMO_RESPAWN_TTL = 2*BOMB_TTL # Number of turns before ammo respawns
 	TREASURE_SPAWN_FREQUENCY_MIN = 5*10 	# Once every 180 steps
@@ -380,23 +400,24 @@ class Game:
 		self.tick_counter += 1
 
 
-	def _player_stat(self, pid, player):
-		return {
-			'name':  player.name,
-			'is_bot': self.is_bot(pid),
-			'score': player.reward,
-			'hp': player.hp,
-			'ammo': player.ammo,
-			'position': player.pos
-		}
+	def _player_stat(self, pid, player) -> PlayerStat:
+		return PlayerStat(
+			name=player.name,
+			is_bot=self.is_bot(pid),
+			score=player.reward,
+			hp=player.hp,
+			ammo=player.ammo,
+			position=player.pos
+		)
 
 	@property
-	def stats(self):
-		return {
-			'game_over': self.is_over,
-			'iteration': self.tick_counter,
-			'players': { k: self._player_stat(k, p) for k, p in self.players.items() }
-		}
+	def stats(self) -> GameStats:
+		return GameStats(
+			is_over=self.is_over,
+			iteration=self.tick_counter, 
+			winner_pid=self.winner[0] if self.winner else None,
+			players={ k: self._player_stat(k, p) for k, p in self.players.items()}
+		)
 
 
 	@property
@@ -656,6 +677,10 @@ class Game:
 		if player.ammo <= 0: # Need to have something to place
 			return False
 		
+		hit_list = self._collision_list(player.pos, self.bomb_list)
+		if hit_list: # Don't place a bomb on top of a bomb!
+			return False
+
 		player.ammo -= 1
 
 		self.bomb_list.append(self._Bomb(pid, player.pos, self.BOMB_TTL, player.power))
@@ -741,6 +766,9 @@ class Game:
 		# Check if given postion overlaps with any of the players
 		# This makes players non-clipable
 		hit_list += self._collision_list(pos, self.players.values())
+
+		# Make bomb non-clipable
+		hit_list += self._collision_list(pos, self.bomb_list)
 
 		# Loop through each colliding sprite, remove it, and add to the score.
 		return len(hit_list) > 0

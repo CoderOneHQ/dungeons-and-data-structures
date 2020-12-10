@@ -23,6 +23,7 @@ setuptools.setup(
 		'appdirs==1.4.4',
 		'arcade==2.4.3',
 		'watchdog==0.10.4',
+		'jsonplus==0.8.0'
 
 		# 'fire',
 		# 'requests'

@@ -14,6 +14,7 @@ class EntityTags(Enum):
 	OreBlock = 'ob'
 	IndestructibleBlock = 'ib'
 
+
 class GameState:
 	""" A state of the game as viewed by an agent.
 	All agent receive the state game state each step to base their decisions on.

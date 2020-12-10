@@ -8,7 +8,7 @@ import argparse
 import os
 import sys
 import logging
-import json
+import jsonplus
 from contextlib import ExitStack
 from typing import Dict, List, Tuple, Union, NamedTuple, Any, Optional
 
@@ -44,7 +44,7 @@ def __load_or_generate_config(config_file:Optional[str]) -> dict:
 		# A custom config file location given:
 		try:
 			with open(config_file) as f:
-				config_data = json.load(f)
+				config_data = jsonplus.loads(f.read())
 		except: # Failed to load config, fallback to default values
 			logger.error(f"config file '{config_file}' not found, using default value")
 			raise
@@ -55,7 +55,7 @@ def __load_or_generate_config(config_file:Optional[str]) -> dict:
 
 		try:
 			with open(config_file) as f:
-				config_data = json.load(f)
+				config_data = jsonplus.loads(f.read())
 		except FileNotFoundError: # Failed to load config, fallback to default values
 			logger.warning(f"No default config file found, generating...")
 			config_data = {
@@ -70,7 +70,7 @@ def __load_or_generate_config(config_file:Optional[str]) -> dict:
 			os.makedirs(config_dir, exist_ok=True)
 			logger.warning(f"Writing default config into: {config_file}")
 			with open(config_file, "w") as f:
-				json.dump(config_data, f, indent=4, sort_keys=True)
+				jsonplus.dump(config_data, f, indent=4, sort_keys=True)
 		
 	
 	config_data.setdefault('start_paused', False)
@@ -205,6 +205,10 @@ def run_match(agents:List[str], players:List[str]=None, config_name:str=None, re
 	with recorder:
 		return run(agent_modules=agents, player_names=players, config=config, recorder=recorder, watch=watch)
 
+def submit(agent_module:str):
+	""" Submit agent module for the team entry into the tournament.
+	"""
+	pass
 
 def main():
 	parser = argparse.ArgumentParser(description=SCREEN_TITLE)
@@ -221,9 +225,15 @@ def main():
 	parser.add_argument('--start_paused', action='store_true',
 					default=False,
 					help='Start a game in pause mode, only if interactive')
+	parser.add_argument('--players', type=str,
+					help="Comma-separated list of player names")
 	parser.add_argument('--hack', action='store_true',
 					default=False,
 					help=argparse.SUPPRESS)
+
+	parser.add_argument('--submit', action='store_true',
+					default=False,
+					help="Don't run the game, but submit the agent as team entry into the trournament")
 
 	parser.add_argument('--record', type=str,
 					help='file name to record game')
@@ -237,6 +247,19 @@ def main():
 	parser.add_argument("agents", nargs="+", help="agent module")
 
 	args = parser.parse_args()
+
+	n_agents = len(args.agents)
+	if args.submit:
+		if n_agents > 1:
+			print(
+				"Error: Only a single agent entry per team is allowed.\n"
+				f"You have specified {n_agents} agent modules.\n"
+				"Please chose only one you wish submit and try again.\n"
+				, file=sys.stderr)
+			sys.exit(1)
+
+		submit(agent_module=args.agents[0])
+		sys.exit(0)
 
 	if len(args.agents) < 2 and (args.headless or not args.interactive):
 		print("At least 2 agents must be provided in the match mode. Exiting", file=sys.stderr)
@@ -252,8 +275,10 @@ def main():
 		sys.exit(1)		
 
 
-	result = run_match(agents=args.agents, config_name=args.config, record_file=args.record, watch=args.watch, args=args)
-	print(json.dumps(result, indent=4, sort_keys=True))
+	players = args.players.split(',') if args.players else None
+	result = run_match(agents=args.agents, players=players, config_name=args.config, record_file=args.record, watch=args.watch, args=args)
+	jsonplus.prefer_compat()
+	print(jsonplus.pretty(result))
 
 	# We done here, all good.
 	sys.exit(0)

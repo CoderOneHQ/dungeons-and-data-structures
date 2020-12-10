@@ -1,4 +1,4 @@
-import json
+import jsonplus
 from .game import Recorder, GameEvent, GameSysAction, PlayerMove
 
 class FileRecorder(Recorder):
@@ -20,7 +20,7 @@ class FileRecorder(Recorder):
 
 		if isinstance(event, GameSysAction):
 			self.file.write(f"{event.action.value} ")
-			self.file.write(json.dumps(event.payload))
+			self.file.write(jsonplus.dumps(event.payload))
 		
 		elif isinstance(event, PlayerMove):
 			self.file.write(f"{event.pid} {event.action.value}")

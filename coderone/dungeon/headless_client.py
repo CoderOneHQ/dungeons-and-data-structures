@@ -13,12 +13,9 @@ class Client:
 		self.game.tick(tick_step)
 
 		stats = self.game.stats
-		for p in stats['players'].values():
-			name = "{}{}".format(p['name'], '(bot)' if p['is_bot'] else "")
-			logger.info(f"{name} HP: {p['hp']} / Ammo: {p['ammo']} / Score: {p['score']}, loc: ({p['position'][0]}, {p['position'][0]})")
-
-
-
+		for p in stats.players.values():
+			name = "{}{}".format(p.name, '(bot)' if p.is_bot else "")
+			logger.info(f"{name} HP: {p.hp} / Ammo: {p.ammo} / Score: {p.score}, loc: ({p.position[0]}, {p.position[1]})")
 
 	def run(self, tick_step):
 		try:
