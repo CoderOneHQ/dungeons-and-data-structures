@@ -30,7 +30,7 @@ SCREEN_TITLE = "Coder One: Dungeons & Data Structures"
 
 
 TICK_STEP = 0.1 			# Number of seconds per 1 iteration of game loop
-ITERATION_LIMIT = 200*10 	# Max number of iteration the game should go on for, None for unlimited
+ITERATION_LIMIT = 180*10 	# Max number of iteration the game should go on for, None for unlimited
 
 logger = logging.getLogger()
 logging.basicConfig(stream=sys.stdout, level=logging.INFO)
@@ -70,7 +70,7 @@ def __load_or_generate_config(config_file:Optional[str]) -> dict:
 			os.makedirs(config_dir, exist_ok=True)
 			logger.warning(f"Writing default config into: {config_file}")
 			with open(config_file, "w") as f:
-				jsonplus.dump(config_data, f, indent=4, sort_keys=True)
+				f.write(jsonplus.pretty(config_data))
 		
 	
 	config_data.setdefault('start_paused', False)
@@ -274,10 +274,10 @@ def main():
 		print("Can not start paused in non-interactive mode. Exiting", file=sys.stderr)
 		sys.exit(1)		
 
+	jsonplus.prefer_compat()
 
 	players = args.players.split(',') if args.players else None
 	result = run_match(agents=args.agents, players=players, config_name=args.config, record_file=args.record, watch=args.watch, args=args)
-	jsonplus.prefer_compat()
 	print(jsonplus.pretty(result))
 
 	# We done here, all good.
