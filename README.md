@@ -1,4 +1,4 @@
-# Dungeons & Data Structures: CoderOne AI Game Challenge
+# Dungeons & Data Structures: Coder One AI Game Challenge
 
 ### Prerequisites
 This is a `python` project and valid Python3 installation is required to run it.
