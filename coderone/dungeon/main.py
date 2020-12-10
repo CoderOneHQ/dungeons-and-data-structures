@@ -37,7 +37,7 @@ logging.basicConfig(stream=sys.stdout, level=logging.INFO)
 # logger.setLevel(logging.DEBUG)
 
 
-def __load_or_generate_config(args, config_file:Optional[str]) -> dict:
+def __load_or_generate_config(config_file:Optional[str]) -> dict:
 	## Setting up the players using the config file
 
 	if config_file:
@@ -78,7 +78,6 @@ def __load_or_generate_config(args, config_file:Optional[str]) -> dict:
 	config_data.setdefault('assets', ASSET_DIRECTORY)
 	config_data.setdefault('interactive', False)
 	config_data.setdefault('update_time_step', TICK_STEP)
-	config_data.setdefault('hack', args.hack or False)
 	config_data.setdefault('no_text', False)  # A work around Pillow (Python image library) bug	
 	
 	config_data.setdefault('rows', Game.ROW_COUNT)
@@ -138,24 +137,25 @@ def __load_agent_drivers(cntx: ExitStack, agent_modules, config:dict, watch=Fals
 	return agents
 
 
-def run(agent_modules, headless=False, watch=False, interactive=False, config=None, recorder=None):
+def run(agent_modules, player_names, config=None, recorder=None, watch=False):
 	# Create a new game
 	row_count = config.get('rows')
 	column_count = config.get('columns')
 	iteration_limit = config.get('max_iterations')
-	is_interactive = interactive or config.get('interactive')
+	is_interactive = config.get('interactive')
 
 	# Load agent modules
 	with ExitStack() as stack:
 		agents = __load_agent_drivers(stack, agent_modules, watch=watch, config=config)
 		if not agents:
-			sys.exit(1)  # Exiting with an error, no contest
+			return None  # Exiting with an error, no contest
 
 		game = Game(row_count=row_count, column_count=column_count, max_iterations=iteration_limit, recorder=recorder)
 
 		# Add all agents to the game
-		for agent_driver in agents:
-			game.add_agent(agent_driver.agent(), agent_driver.name)
+		names_len = len(player_names) if player_names else 0
+		for i, agent_driver in enumerate(agents):
+			game.add_agent(agent_driver.agent(), player_names[i] if i < names_len else agent_driver.name)
 
 		# Add a player for the user if running in interactive mode or configured interactive
 		user_pid = game.add_player("Player") if is_interactive else None
@@ -163,7 +163,7 @@ def run(agent_modules, headless=False, watch=False, interactive=False, config=No
 		game.generate_map()
 
 		tick_step = config.get('tick_step')
-		if headless or config.get('headless'):
+		if config.get('headless'):
 			from .headless_client import Client
 
 			client = Client(game=game, config=config)
@@ -183,11 +183,27 @@ def run(agent_modules, headless=False, watch=False, interactive=False, config=No
 			window.run(tick_step)
 
 		# Announce game winner and exit
-		results = game.stats
-		print(json.dumps(results, indent=4, sort_keys=True))
+		return game.stats
 
-	# We done here, all good.
-	sys.exit(0)
+
+def run_match(agents:List[str], players:List[str]=None, config_name:str=None, record_file:str=None, watch:bool=False, args:Any=None):
+	config = __load_or_generate_config(config_name)
+	if args:
+		if args.headless or 'headless' not in config:			config['headless'] = args.headless
+		if args.interactive or 'interactive' not in config:		config['interactive'] = args.interactive
+		if args.hack or 'hack' not in config:					config['hack'] = args.hack
+		if args.no_text or 'no_text' not in config:				config['no_text'] = args.no_text
+		if args.start_paused or 'start_paused' not in config:	config['start_paused'] = args.start_paused
+		# if args.watch or 'watch' not in config:					config['watch'] = args.watch
+		# if args.record or 'record' not in config:				config['record'] = args.record
+		# if args.wait_end or 'wait_end' not in config:			config['wait_end'] = args.wait_end
+		# if args.tick_step or 'tick_step' not in config:			config['tick_step'] = args.tick_step
+
+	recorder = FileRecorder(record_file) if record_file else Recorder()
+
+	# Everything seems in order - lets start the game
+	with recorder:
+		return run(agent_modules=agents, player_names=players, config=config, recorder=recorder, watch=watch)
 
 
 def main():
@@ -199,14 +215,21 @@ def main():
 	parser.add_argument('--interactive', action='store_true',
 					default=False,
 					help='all a user to contol a player')
-	parser.add_argument('--watch', action='store_true',
+	parser.add_argument('--no_text', action='store_true',
 					default=False,
-					help='automatically reload agents on file changes')
-	parser.add_argument('--record', type=str,
-					help='file name to record game')
+					help='Graphics bug workaround - disables all text')
+	parser.add_argument('--start_paused', action='store_true',
+					default=False,
+					help='Start a game in pause mode, only if interactive')
 	parser.add_argument('--hack', action='store_true',
 					default=False,
 					help=argparse.SUPPRESS)
+
+	parser.add_argument('--record', type=str,
+					help='file name to record game')
+	parser.add_argument('--watch', action='store_true',
+					default=False,
+					help='automatically reload agents on file changes')
 	parser.add_argument('--config', type=str,
 					default=None,
 					help='path to the custom config file')
@@ -215,21 +238,25 @@ def main():
 
 	args = parser.parse_args()
 
-	config = __load_or_generate_config(args, args.config)
+	if len(args.agents) < 2 and (args.headless or not args.interactive):
+		print("At least 2 agents must be provided in the match mode. Exiting", file=sys.stderr)
+		sys.exit(1)
 
 	if args.headless and args.interactive:
 		print("Interactive play is not support in headless mode. Exiting", file=sys.stderr)
 		sys.exit(1)
+	if args.headless and args.no_text:
+		print("Makes no sense to run headless and ask for no-text. Ignoring", file=sys.stderr)
+	if not args.interactive and args.start_paused:
+		print("Can not start paused in non-interactive mode. Exiting", file=sys.stderr)
+		sys.exit(1)		
 
-	if args.headless and len(args.agents) < 2:
-		print("At least 2 agents must be provided in the match mode. Exiting", file=sys.stderr)
-		sys.exit(1)
 
-	recorder = FileRecorder(args.record) if args.record else Recorder()
+	result = run_match(agents=args.agents, config_name=args.config, record_file=args.record, watch=args.watch, args=args)
+	print(json.dumps(result, indent=4, sort_keys=True))
 
-	# Everything seems in order - lets start the game
-	with recorder:
-		run(args.agents, config=config, headless=args.headless, watch=args.watch, interactive=args.interactive, recorder=recorder)
+	# We done here, all good.
+	sys.exit(0)
 
 
 if __name__ == "__main__":
