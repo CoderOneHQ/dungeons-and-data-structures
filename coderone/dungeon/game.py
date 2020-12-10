@@ -104,6 +104,7 @@ class Game:
 	PLAYER_START_POWER = 2 # Initial blast radius
 	BOMB_TTL = 35 # Number of turns before bomb expires
 
+	AMMO_PERISH_TTL = 5*BOMB_TTL # Number of turns before ammo expires
 	AMMO_RESPAWN_TTL = 2*BOMB_TTL # Number of turns before ammo respawns
 	TREASURE_SPAWN_FREQUENCY_MIN = 5*10 	# Once every 180 steps
 	TREASURE_SPAWN_FREQUENCY_MAX = 25*10 	# Once every 180 steps
@@ -171,19 +172,22 @@ class Game:
 			self.power = power
 			
 
-	class _Ammunitation(_Positioned):
+	class _Ammunitation(_Perishable):
 		Tag = EntityTags.Ammo.value
 
-		def __init__(self, pos: Point, value: int=1):
-			super().__init__(pos=pos)
+		def __init__(self, pos: Point, ttl: int, value: int=1, on_perish=None):
+			super().__init__(pos=pos, ttl=ttl)
 			self.value = value
+			self.on_perish = on_perish
 
 		@property
 		def is_alive(self):
-			return self.value > 0
+			return super().is_alive and self.value > 0
 
 		def update(self):
-			pass
+			super().update()
+			if not self.hp and self.on_perish:
+				self.on_perish()
 
 
 	class _Treasure(_Destructable):
@@ -506,7 +510,7 @@ class Game:
 
 		free_ammo = random.sample(all_cells, self.FREE_AMMO_COUNT)
 		for cell in free_ammo:
-			self.ammunition_list.append(self._Ammunitation(cell))
+			self.ammunition_list.append(self._Ammunitation(cell, ttl=self.AMMO_PERISH_TTL, on_perish=lambda: self._enqueue_effect(DelayedEffectType.SPAWN_AMMO, ttl=self.AMMO_RESPAWN_TTL)))
 			all_cells.remove(cell)
 
 		self.recorder.record(self.tick_counter, GameSysAction(GameSysActions.MAP, self._serialize_map()))
@@ -754,7 +758,7 @@ class Game:
 			return False
 
 		loc = random.choice(good_locations)
-		self.ammunition_list.append(Game._Ammunitation(loc))
+		self.ammunition_list.append(self._Ammunitation(loc, ttl=self.AMMO_PERISH_TTL, on_perish=lambda: self._enqueue_effect(DelayedEffectType.SPAWN_AMMO, ttl=self.AMMO_RESPAWN_TTL)))
 		
 		return True
 

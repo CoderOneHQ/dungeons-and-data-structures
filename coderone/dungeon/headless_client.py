@@ -20,12 +20,12 @@ class Client:
 	def run(self, tick_step):
 		try:
 			while not self.game.is_over:
-				logger.info(f"Game step [{self.game.tick_counter}/{self.game.max_iterations}]... ")
+				logger.info(f"game-step [{self.game.tick_counter}/{self.game.max_iterations}]")
 				
 				cycle_start_time = time.time()
 				self._update(tick_step)
 				dt = time.time() - cycle_start_time
-				logger.debug(f"...step [{self.game.tick_counter}/{self.game.max_iterations}] completed in {dt*1000.0:.4f}ms")
+				logger.debug(f"game-step [{self.game.tick_counter}/{self.game.max_iterations}] completed in {dt*1000.0:.4f}ms")
 		
 				sleep_time = tick_step - dt
 				if sleep_time > 0:
