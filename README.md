@@ -100,7 +100,11 @@ munmap_chunk(): invalid pointer
 Aborted (core dumped)
 ```
 Add the following option to your `config.json`
-> "no_text": false,
+```
+...
+ "no_text": true,
+...
+```
 
 This options disables all texts in the game which resolves library crashes.
 
