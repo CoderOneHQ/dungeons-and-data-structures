@@ -83,8 +83,10 @@ class Client(arcade.Window):
 		self.user_pid = user_pid
 		self.interactive = interactive
 		self.paused = self.app_config.get('start_paused', False)
-		self.end_game_wait_time = self.app_config.get('wait_end', 10)
-		self.end_game_timer = self.end_game_wait_time
+		self.single_step = self.app_config.get('single_step', False)
+		self.is_endless = self.app_config.get('endless', False)
+		self.end_game_wait_time = self.app_config.get('wait_end')
+		self.end_game_timer = self.end_game_wait_time or 0
 
 		arcade.set_background_color(arcade.color.BLACK)
 
@@ -183,7 +185,14 @@ class Client(arcade.Window):
 
 	def tick_game(self, time_interval):
 		if not self.paused: # if game has paused then stop
+
 			self.game.tick(time_interval)
+
+			if self.game.is_over and self.is_endless:
+				self._reset_game()
+
+			if self.single_step:
+				self.paused = True
 
 	def run(self, time_interval):
 		# Enable fixed interval timer
@@ -221,7 +230,7 @@ class Client(arcade.Window):
 								font_name='arial',
 								align="center", anchor_x="center", anchor_y="center")
 
-		if self.game.is_over:
+		if self.game.is_over and self.end_game_wait_time:
 			progress = 360*(1 - self.end_game_timer / self.end_game_wait_time)
 			sq_size = self.height / 4
 			width = sq_size / 4
@@ -241,11 +250,8 @@ class Client(arcade.Window):
 
 	def on_update(self, delta_time):
 		""" Update game state """
-		if self.paused: # if game has paused then don't update it
-			return
 		
-		game_over = self.game.is_over
-		if game_over:  # Game over count-down
+		if not self.paused and self.game.is_over:  # Game over count-down
 			self.end_game_timer -= delta_time
 		
 		if self.end_game_timer < 0:
@@ -256,7 +262,14 @@ class Client(arcade.Window):
 		self.player_list.update()
 		self.sfx_list.update()
 
-		self._update_map()
+		if not self.paused: # if game has paused then don't update it
+			self._update_map()
+
+
+	def _reset_game(self):
+		self.end_game_timer = self.end_game_wait_time or 0
+		self.game.generate_map()
+		self._map_game()
 
 	def on_key_press(self, key, modifiers):
 		"""Called whenever a key is pressed. """
@@ -266,9 +279,7 @@ class Client(arcade.Window):
 
 		if self.interactive and key == arcade.key.R:
 			self.paused = True
-			self.end_game_timer = self.end_game_wait_time
-			self.game.generate_map()
-			self._map_game()
+			self._reset_game()
 
 		# Next command are only accepted if game is not paused:
 		if self.paused or not self.interactive or not self.user_pid:

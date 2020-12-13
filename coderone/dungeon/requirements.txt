@@ -1,4 +1,8 @@
+numpy==1.19.3
+
 jsonplus==0.8.0
 appdirs==1.4.4
 arcade==2.4.3
 watchdog==0.10.4
+
+requests==2.25.0

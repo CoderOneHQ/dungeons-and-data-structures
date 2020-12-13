@@ -246,7 +246,6 @@ class Game:
 
 		self.players:Dict[PID, self._Player] = {}
 		
-		self.tick_counter = 0
 		self._reset_state()
 
 
@@ -292,69 +291,70 @@ class Game:
 
 		"""
 		if not self.is_over:
-			# Gather agents commands
+			# Gather commands from agents
 			for pid, agent in self._agents.items():
 				action = self._get_agent_input(pid, agent)
 				if action: 
 					self.enqueue_action(pid, action)
 
-			# Apply enqueued actions
+			# Collect 1 enqueued action from each player for execution
 			orders_for_tick = []
 			for pid, action_queue in self._action_queue.items():
 				if action_queue:
 					action = action_queue.pop(0)
 					orders_for_tick.append((pid, action))
 			
-			# Randomize the order of actions?
+			# Randomize the order in which actions appied.
+			# This compemsates for low resolution of 100ms where informaion about exact timing of commands is lost.
 			random.shuffle(orders_for_tick)
 			for pid, action in orders_for_tick:
 				self._apply_action(pid, action)
 
-		# Apply fire!
-		## Check if any players stepped into a file-zone
-		for pid, player in self._alive_players():
-			hit_list = self._collision_list(player.pos, self.fire_list)
-			for hit in hit_list:
-				fire_owner = self.players[hit.owner_id] if hit.owner_id in self.players else None
+			# Apply fire!
+			## Check if any player stepped into a fire-zone
+			for pid, player in self._alive_players():
+				hit_list = self._collision_list(player.pos, self.fire_list)
+				for hit in hit_list:
+					fire_owner = self.players[hit.owner_id] if hit.owner_id in self.players else None
 
-				# Apply fire damage to the player
-				player.apply_hit(self.FIRE_HIT)
+					# Apply fire damage to the player
+					player.apply_hit(self.FIRE_HIT)
 
-				player.reward -= self.FIRE_PENALTY
-				if player != fire_owner and fire_owner:
-					fire_owner.reward += self.FIRE_REWARD
+					player.reward -= self.FIRE_PENALTY
+					if player != fire_owner and fire_owner:
+						fire_owner.reward += self.FIRE_REWARD
 
 
-		## Apply fire damage to static entities
-		for fire in self.fire_list:
-			fire_owner = self.players[fire.owner_id] if fire.owner_id in self.players else None
-			
-			## Check for fire damage of static blocks and collect rewads
-			hitblock_list = self._collision_list(fire.pos, self.value_block_list)
-			for block in hitblock_list:
-				block.apply_hit(self.FIRE_HIT)
-				if not block.is_alive and fire_owner:
-					fire_owner.reward += block.reward
-			
-			## Check for fire damage of nearby bombs and set them off
-			hitbomb_list = self._collision_list(fire.pos, self.bomb_list)
-			for bomb in hitbomb_list:
-				bomb.apply_hit(bomb.hp)
+			## Apply fire damage to static entities
+			for fire in self.fire_list:
+				fire_owner = self.players[fire.owner_id] if fire.owner_id in self.players else None
+				
+				## Check for fire damage of static blocks and collect rewads
+				hitblock_list = self._collision_list(fire.pos, self.value_block_list)
+				for block in hitblock_list:
+					block.apply_hit(self.FIRE_HIT)
+					if not block.is_alive and fire_owner:
+						fire_owner.reward += block.reward
+				
+				## Check for fire damage of nearby bombs and set them off
+				hitbomb_list = self._collision_list(fire.pos, self.bomb_list)
+				for bomb in hitbomb_list:
+					bomb.apply_hit(bomb.hp)
 
-		# Alive players get to pickup static rewards:
-		for pid, player in self._alive_players():
-			if player.is_alive: # Dead players are not allowed to pickup items
-				# Pickup ammo:
-				ammo_found = self._collision_list(player.pos, self.ammunition_list)
-				for am in ammo_found:
-					player.ammo += am.value
-					am.value = 0
+			# Alive players get to pickup static rewards:
+			for pid, player in self._alive_players():
+				if player.is_alive: # Dead players are not allowed to pickup items
+					# Pickup ammo:
+					ammo_found = self._collision_list(player.pos, self.ammunition_list)
+					for am in ammo_found:
+						player.ammo += am.value
+						am.value = 0
 
-				# Pickup treasures:
-				treasure_found = self._collision_list(player.pos, self.treasure_list)
-				for treasure in treasure_found:
-					player.reward += treasure.value
-					treasure.value = 0
+					# Pickup treasures:
+					treasure_found = self._collision_list(player.pos, self.treasure_list)
+					for treasure in treasure_found:
+						player.reward += treasure.value
+						treasure.value = 0
 
 		# Update effects and lists
 		self.__update_list(self._delayed_effects)
@@ -389,14 +389,22 @@ class Game:
 		self.value_block_list =	self._only_alive(self.value_block_list)
 		#self.players = dict(filter(lambda p: p.is_alive, self.players.values()))
 
-		# Evaluate game termination rule
-		over_iter_limit = True if self.max_iterations and self.tick_counter > self.max_iterations else False
-		has_opponents = sum(p.is_alive for p in self.players.values()) > 1
-		self.is_over = not has_opponents or over_iter_limit # There can be only one!
-		self.winner = next(((pid,p) for pid,p in self.players.items() if p.is_alive), None) if self.is_over else None
+		# Evaluate game termination rules
+		if not self.is_over:
+			over_iter_limit = True if self.max_iterations and self.tick_counter > self.max_iterations else False
+			has_opponents = sum(p.is_alive for p in self.players.values()) > 1
 
-		if not self.is_over:		
+			# Game is over when there is at most 1 player left or 
+			# Time limit (number of iterations) exceeded
+			self.is_over = not has_opponents or over_iter_limit # There can be only one!
+
+			if self.is_over:
+				# Picking winners: last player standing or highest scoring corps
+				self.winner = 	sorted(self.players.items(), key=lambda item: item[1].reward)[-1] if has_opponents else \
+								next(((pid,p) for pid,p in self.players.items() if p.is_alive), None)
+
 			game_state = self._serialize_state()
+			
 			# Update agents view of the world
 			for pid, agent in self._agents.items():
 				self._update_agent(dt, pid, agent, game_state)
@@ -443,6 +451,7 @@ class Game:
 	def _reset_state(self):
 		self.is_over = False
 		self.winner = None
+		self.tick_counter = 0
 
 		# Recet actions queues
 		self._action_queue:Dict[PID, List[PlayerActions]] = defaultdict(lambda: [])
@@ -518,7 +527,7 @@ class Game:
 	def _serialize_state(self) -> GameState:
 		return GameState(
 				is_over=self.is_over,
-				tick_number=self.tick_counter, 
+				tick_number=self.tick_counter,
 				size=(self.column_count, self.row_count),
 				
 				game_map=self._serialize_map(),

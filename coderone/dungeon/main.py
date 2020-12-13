@@ -77,8 +77,10 @@ def __load_or_generate_config(config_file:Optional[str]) -> dict:
 	config_data.setdefault('wait_end', 10)
 	config_data.setdefault('assets', ASSET_DIRECTORY)
 	config_data.setdefault('interactive', False)
-	config_data.setdefault('update_time_step', TICK_STEP)
+	config_data.setdefault('tick_step', TICK_STEP)
 	config_data.setdefault('no_text', False)  # A work around Pillow (Python image library) bug	
+	config_data.setdefault('single_step', False)
+	config_data.setdefault('endless', False)
 	
 	config_data.setdefault('rows', Game.ROW_COUNT)
 	config_data.setdefault('columns', Game.COLUMN_COUNT)
@@ -89,32 +91,31 @@ def __load_or_generate_config(config_file:Optional[str]) -> dict:
 
 # Borrowed from flask!
 def _prepare_import(path):
-    """Given a filename this will try to calculate the python path, add it
-    to the search path and return the actual module name that is expected.
-    """
-    path = os.path.realpath(path)
+	"""Given a filename this will try to calculate the python path, add it
+	to the search path and return the actual module name that is expected.
+	"""
+	path = os.path.realpath(path)
+	fname, ext = os.path.splitext(path)
+	if ext == ".py":
+		path = fname
 
-    fname, ext = os.path.splitext(path)
-    if ext == ".py":
-        path = fname
+	if os.path.basename(path) == "__init__":
+		path = os.path.dirname(path)
 
-    if os.path.basename(path) == "__init__":
-        path = os.path.dirname(path)
+	module_name = []
 
-    module_name = []
+	# move up until outside package structure (no __init__.py)
+	while True:
+		path, name = os.path.split(path)
+		module_name.append(name)
 
-    # move up until outside package structure (no __init__.py)
-    while True:
-        path, name = os.path.split(path)
-        module_name.append(name)
+		if not os.path.exists(os.path.join(path, "__init__.py")):
+			break
 
-        if not os.path.exists(os.path.join(path, "__init__.py")):
-            break
+	if sys.path[0] != path:
+		sys.path.insert(0, path)
 
-    if sys.path[0] != path:
-        sys.path.insert(0, path)
-
-    return ".".join(module_name[::-1])
+	return ".".join(module_name[::-1])
 
 
 def __load_agent_drivers(cntx: ExitStack, agent_modules, config:dict, watch=False):
@@ -136,6 +137,8 @@ def __load_agent_drivers(cntx: ExitStack, agent_modules, config:dict, watch=Fals
 	
 	return agents
 
+class TooManyPlayers(Exception):
+	pass
 
 def run(agent_modules, player_names, config=None, recorder=None, watch=False):
 	# Create a new game
@@ -143,6 +146,13 @@ def run(agent_modules, player_names, config=None, recorder=None, watch=False):
 	column_count = config.get('columns')
 	iteration_limit = config.get('max_iterations')
 	is_interactive = config.get('interactive')
+
+	# Check max number of players support by the map:
+	squers_per_player = 6
+	max_players = row_count*column_count / squers_per_player
+	if max_players < len(agent_modules):
+		raise TooManyPlayers(f"Game map ({column_count}x{row_count}) supports at most {max_players} players while {len(agent_modules)} agent requested.")
+
 
 	# Load agent modules
 	with ExitStack() as stack:
@@ -194,6 +204,9 @@ def run_match(agents:List[str], players:List[str]=None, config_name:str=None, re
 		if args.hack or 'hack' not in config:					config['hack'] = args.hack
 		if args.no_text or 'no_text' not in config:				config['no_text'] = args.no_text
 		if args.start_paused or 'start_paused' not in config:	config['start_paused'] = args.start_paused
+		if args.single_step or 'single_step' not in config:		config['single_step'] = args.single_step
+		if args.endless or 'endless' not in config:				config['endless'] = args.endless
+		
 		# if args.watch or 'watch' not in config:					config['watch'] = args.watch
 		# if args.record or 'record' not in config:				config['record'] = args.record
 		# if args.wait_end or 'wait_end' not in config:			config['wait_end'] = args.wait_end
@@ -205,10 +218,47 @@ def run_match(agents:List[str], players:List[str]=None, config_name:str=None, re
 	with recorder:
 		return run(agent_modules=agents, player_names=players, config=config, recorder=recorder, watch=watch)
 
-def submit(agent_module:str):
+
+def submit_agent(agent_module:str):
 	""" Submit agent module for the team entry into the tournament.
 	"""
-	pass
+	path = os.path.realpath(agent_module)
+	fname, ext = os.path.splitext(path)
+	if ext == ".py": # A single file with .py extention specified
+		module_name = os.path.basename(fname)
+		single = True
+		if not os.path.exists(path):
+			print(f"Error: specfied file not found '{agent_module}'\n"
+			"No files submitted.", file=sys.stderr)
+			return
+	elif not ext and os.path.exists(f'{path}.py'):
+		module_name = os.path.basename(fname)
+		path = f'{path}.py'
+		single = True
+	else:
+		module_name = agent_module
+		single = False
+		if not os.path.exists(path):
+			print(f"Error: directory found for the specified module: '{agent_module}'\n"
+			"No files submitted.", file=sys.stderr)
+			return
+
+	# Make sure there is a valid __init__.py if its a module:
+	if not single:
+		if not os.path.exists(os.path.join(path, '__init__.py')):
+			print(f"Error, specfied location '{agent_module}' is a directory, but does not appear to be a properly-formed python module.\n"
+			"Check the path or add missing '__init__.py' file.\n"
+			"No files submitted.", 
+			file=sys.stderr)
+			return
+
+	from .publisher import submit
+	try:
+		submit(agent_module=module_name, single=single, source_file=path)
+	except KeyboardInterrupt:
+		# print("Canceled.")
+		return
+
 
 def main():
 	parser = argparse.ArgumentParser(description=SCREEN_TITLE)
@@ -222,14 +272,20 @@ def main():
 	parser.add_argument('--no_text', action='store_true',
 					default=False,
 					help='Graphics bug workaround - disables all text')
-	parser.add_argument('--start_paused', action='store_true',
-					default=False,
-					help='Start a game in pause mode, only if interactive')
 	parser.add_argument('--players', type=str,
 					help="Comma-separated list of player names")
 	parser.add_argument('--hack', action='store_true',
 					default=False,
 					help=argparse.SUPPRESS)
+	parser.add_argument('--start_paused', action='store_true',
+					default=False,
+					help='Start a game in pause mode, only if interactive')
+	parser.add_argument('--single_step', action='store_true',
+					default=False,
+					help='Game will run one step at a time awaiting for player input')
+	parser.add_argument('--endless', action='store_true',
+					default=False,
+					help='Game will restart after the match is over. indefinetly')
 
 	parser.add_argument('--submit', action='store_true',
 					default=False,
@@ -258,16 +314,17 @@ def main():
 				, file=sys.stderr)
 			sys.exit(1)
 
-		submit(agent_module=args.agents[0])
+		submit_agent(agent_module=args.agents[0])
 		sys.exit(0)
 
-	if len(args.agents) < 2 and (args.headless or not args.interactive):
+	if n_agents < 2 and (args.headless or not args.interactive):
 		print("At least 2 agents must be provided in the match mode. Exiting", file=sys.stderr)
 		sys.exit(1)
 
 	if args.headless and args.interactive:
 		print("Interactive play is not support in headless mode. Exiting", file=sys.stderr)
 		sys.exit(1)
+		# TODO: Do we need an error message for 'single_step' if running headless?
 	if args.headless and args.no_text:
 		print("Makes no sense to run headless and ask for no-text. Ignoring", file=sys.stderr)
 	if not args.interactive and args.start_paused:
@@ -277,8 +334,14 @@ def main():
 	jsonplus.prefer_compat()
 
 	players = args.players.split(',') if args.players else None
-	result = run_match(agents=args.agents, players=players, config_name=args.config, record_file=args.record, watch=args.watch, args=args)
-	print(jsonplus.pretty(result))
+
+	try:
+		result = run_match(agents=args.agents, players=players, config_name=args.config, record_file=args.record, watch=args.watch, args=args)
+		print(jsonplus.pretty(result))
+	except TooManyPlayers as ex:
+		print(f'Too many players for the game.\n{ex}', file=sys.stderr)
+		sys.exit(1)		
+
 
 	# We done here, all good.
 	sys.exit(0)

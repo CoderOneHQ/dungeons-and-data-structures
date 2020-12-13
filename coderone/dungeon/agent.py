@@ -94,6 +94,7 @@ class GameState:
 	def opponents(self, excluding_player_pid:PID=None):
 		return [pos for pid, pos in self._players if excluding_player_pid is not None and pid != excluding_player_pid or excluding_player_pid is None]
 
+
 class PlayerState:
 	def __init__(self, id:PID, ammo:int, hp:int, location:Point, reward:int, power:int):
 		self.id = id

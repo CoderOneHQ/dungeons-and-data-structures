@@ -9,6 +9,10 @@ class Client:
 		self.game = game
 		self.config = config
 
+		self.is_endless = self.config.get('endless', False)
+		self.paused = False # self.config.get('start_paused', False)
+		self.single_step = False # self.config.get('single_step', False)
+		
 	def _update(self, tick_step):
 		self.game.tick(tick_step)
 
@@ -16,6 +20,9 @@ class Client:
 		for p in stats.players.values():
 			name = "{}{}".format(p.name, '(bot)' if p.is_bot else "")
 			logger.info(f"{name} HP: {p.hp} / Ammo: {p.ammo} / Score: {p.score}, loc: ({p.position[0]}, {p.position[1]})")
+
+		if self.game.is_over and self.is_endless:
+			self._reset_game()
 
 	def run(self, tick_step):
 		try:
@@ -35,3 +42,6 @@ class Client:
 		except KeyboardInterrupt:
 			logger.info(f"user interrupted the game")
 			pass
+
+	def _reset_game(self):
+		self.game.generate_map()
