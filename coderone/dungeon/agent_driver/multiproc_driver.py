@@ -86,20 +86,16 @@ class Consumer(multiprocessing.Process):
 
 	def run(self):
 		driver = SimpleDriver(self.module_name, watch=self.watch, config=self.config)
-		agent = driver.agent()
 		
 		try:
+			agent = driver.agent()
+
 			time_posted = time.time()
 			while self.is_not_done:
-				if self.task_queue.empty():
+				while not self.task_queue.empty():
 					cmd = self.task_queue.get()
 					if not self._process_cmd(cmd):
 						continue
-				else:
-					while not self.task_queue.empty():
-						cmd = self.task_queue.get()
-						if not self._process_cmd(cmd):
-							continue
 
 				if self.game_state and self.player_state:
 					cycle_start_time = time.time()
@@ -123,6 +119,7 @@ class Consumer(multiprocessing.Process):
 		logger.debug(f"{self.name} loop is over")
 		return
 
+
 class Driver:
 
 	JOIN_TIMEOUT_SEC = 1
@@ -139,7 +136,12 @@ class Driver:
 			p.stop()
 
 		for w in self._workers:
-			w.join(self.JOIN_TIMEOUT_SEC)
+			try:
+				w.join(self.JOIN_TIMEOUT_SEC)
+				w.close()
+			except ValueError:
+				logger.warn(f"process for agent '{self.name}' has not finished gracefully. Terminating")
+				w.terminate()
 
 	def agent(self):
 		tasks_queue = multiprocessing.Queue()
