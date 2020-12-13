@@ -25,8 +25,8 @@ class GameState:
 				ammo:List[Point],
 				treasure:List[Point],
 				bombs:List[Point],
-				blocks,
-				players,
+				blocks:List[Tuple[EntityTags, Point]],
+				players:List[Tuple[PID, Point]],
 				):
 		self.is_over = is_over
 		self.tick_number = tick_number
@@ -91,9 +91,8 @@ class GameState:
 	def is_occupied(self, location:Point) -> bool:
 		return self.entity_at(location) is not None
 
-	def opponents(self, excluding_player_pid:PID):
-		return [pos for pid, pos in self._players if excluding_player_pid and pid != excluding_player_pid or not excluding_player_pid]
-
+	def opponents(self, excluding_player_pid:PID=None):
+		return [pos for pid, pos in self._players if excluding_player_pid is not None and pid != excluding_player_pid or excluding_player_pid is None]
 
 class PlayerState:
 	def __init__(self, id:PID, ammo:int, hp:int, location:Point, reward:int, power:int):
