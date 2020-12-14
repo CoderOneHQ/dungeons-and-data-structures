@@ -9,8 +9,8 @@ import jsonplus
 import requests
 
 
-# BASE_URL = 'https://us-central1-psyched-equator-297906.cloudfunctions.net'
-BASE_URL = 'http://localhost:5001/psyched-equator-297906/us-central1'
+BASE_URL = 'https://us-central1-psyched-equator-297906.cloudfunctions.net'
+# BASE_URL = 'http://localhost:5001/psyched-equator-297906/us-central1'
 
 
 class AuthInfo(NamedTuple):

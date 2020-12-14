@@ -285,7 +285,7 @@ def main():
 					help='Game will run one step at a time awaiting for player input')
 	parser.add_argument('--endless', action='store_true',
 					default=False,
-					help='Game will restart after the match is over. indefinetly')
+					help='Game will restart after the match is over. indefinitely')
 
 	parser.add_argument('--submit', action='store_true',
 					default=False,
