@@ -13,6 +13,61 @@ BASE_URL = 'https://us-central1-psyched-equator-297906.cloudfunctions.net'
 # BASE_URL = 'http://localhost:5001/psyched-equator-297906/us-central1'
 
 
+exclude_names = [
+	"__pycache__",
+	"build",
+	"develop-eggs",
+	"dist",
+	"downloads",
+	"eggs",
+	".eggs",
+	"lib",
+	"lib64",
+	"parts"
+	"sdist",
+	"var",
+	"wheels",
+	"python-wheels",
+	".egg-info",
+	".pybuilder",
+	"target",
+	".ipynb_checkpoints",
+	"__pypackages__",
+
+	".env",
+	".venv",
+	"env",
+	"venv",
+	"ENV",
+	".pyre",
+	".pytype",
+	"cython_debug"
+	]
+
+exclude_ext = [
+	".tmp",
+	".pyc", ".pyo", ".pyd",
+	".class",
+	".so",
+	".egg-info",
+	".egg",
+	".manifest",
+	".spec",
+	".cover",
+	".log",
+	]
+
+
+def filter_function(tarinfo):
+	if tarinfo.name in exclude_names:
+		return None
+	
+	if os.path.splitext(tarinfo.name)[1] in exclude_names:
+		return None
+
+	return tarinfo
+
+
 class AuthInfo(NamedTuple):
 	user_email:str
 	token:str
@@ -119,7 +174,7 @@ def submit(agent_module:str, single:bool, source_file:str):
 
 	with tempfile.NamedTemporaryFile(suffix='.tar.gz') as f:
 		with tarfile.open(fileobj=f, mode='w:gz') as tar:
-			tar.add(source_file, arcname=os.path.basename(source_file))
+			tar.add(source_file, arcname=os.path.basename(source_file), filter=filter_function)
 
 		f.flush()
 		f.seek(0)
