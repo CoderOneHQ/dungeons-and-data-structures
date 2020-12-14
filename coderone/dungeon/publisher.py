@@ -9,8 +9,8 @@ import jsonplus
 import requests
 
 
-BASE_URL = 'https://us-central1-psyched-equator-297906.cloudfunctions.net/api'
-# BASE_URL = 'http://localhost:5001/psyched-equator-297906/us-central1/api'
+# BASE_URL = 'https://us-central1-psyched-equator-297906.cloudfunctions.net'
+BASE_URL = 'http://localhost:5001/psyched-equator-297906/us-central1'
 
 
 class AuthInfo(NamedTuple):
@@ -35,7 +35,7 @@ class AuthError(Exception):
 def _auth_team(user_email, passw) -> AuthInfo:
 	print(f"Logging as '{user_email}'")
 
-	user_r = requests.post('https://identitytoolkit.googleapis.com/v1/accounts:signInWithPassword?key=AIzaSyADWn86sHABA5YmDRmX8mQNvPcTDBtZvnU', 
+	user_r = requests.post(f'{BASE_URL}/auth', 
 		data = {"email":user_email,"password":passw,"returnSecureToken": True}
 	)
 
@@ -44,7 +44,7 @@ def _auth_team(user_email, passw) -> AuthInfo:
 		raise AuthError('Unauthorised' if 'error' not in response_json else response_json['error']['message'])
 	
 	user_token = response_json['idToken']
-	r = requests.get(f'{BASE_URL}/my-team', headers = {"authorization": f"Bearer {user_token}"})
+	r = requests.get(f'{BASE_URL}/api/my-team', headers = {"authorization": f"Bearer {user_token}"})
 	if r.status_code != 200:	
 		try:
 			r.raise_for_status()
@@ -69,7 +69,7 @@ def _auth_team(user_email, passw) -> AuthInfo:
 def _submit_agent_code(module_archive, agent_name, single, auth:AuthInfo):
 	print(f"Uploading agent archive '{agent_name}'")
 
-	r = requests.put(f'{BASE_URL}/upload_url/{auth.team_id}/{agent_name}', params={'filename': f'{agent_name}.tar.gz', 'single': single}, headers = {"authorization": f"Bearer {auth.token}"})
+	r = requests.put(f'{BASE_URL}/api/upload_url/{auth.team_id}/{agent_name}', params={'filename': f'{agent_name}.tar.gz', 'single': single}, headers = {"authorization": f"Bearer {auth.token}"})
 	if r.status_code == 200:
 		pass
 	elif r.status_code == 401:

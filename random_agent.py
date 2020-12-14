@@ -14,6 +14,7 @@ class agent:
 		self.name = "random bot"
 		""" Your agent initialization code goes here.
 		"""
+		raise Exception("BOOM")
 
 	def next_move(self, ascii_map, state_dic):
 		""" This method is called each time the agent is required to choose an action

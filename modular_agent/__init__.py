@@ -1,4 +1,4 @@
-from . import stand_still
+from . import my_agent
 
 def agent():
-	return stand_still.agent()
+	return my_agent.FreeRoamingAgent()
