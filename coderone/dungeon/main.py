@@ -7,6 +7,7 @@
 import argparse
 import os
 import sys
+import time
 import logging
 import jsonplus
 from contextlib import ExitStack
@@ -15,8 +16,8 @@ from typing import Dict, List, Tuple, Union, NamedTuple, Any, Optional
 from appdirs import user_config_dir
 
 from .game_recorder import FileRecorder, Recorder
-# from coderone.dungeon.agent_driver.simple_driver import Driver
-from .agent_driver.multiproc_driver import Driver
+# from coderone.dungeon.agent_driver.simple_driver import Driver, AgentProxy
+from .agent_driver.multiproc_driver import Driver, AgentProxy
 
 from .game import Game
 
@@ -28,7 +29,8 @@ DEFAULT_CONFIG_FILE = 'config.json'
 
 SCREEN_TITLE = "Coder One: Dungeons & Data Structures"
 
-
+AGENT_READY_WAIT_TIMEOUT = 3
+AGENT_READY_WAIT_SEC = 1	# Max numbre of sec to wait for agent to become ready.
 TICK_STEP = 0.1 			# Number of seconds per 1 iteration of game loop
 ITERATION_LIMIT = 180*10 	# Max number of iteration the game should go on for, None for unlimited
 
@@ -118,7 +120,7 @@ def _prepare_import(path):
 	return ".".join(module_name[::-1])
 
 
-def __load_agent_drivers(cntx: ExitStack, agent_modules, config:dict, watch=False):
+def __load_agent_drivers(cntx: ExitStack, agent_modules, config:dict, watch=False) -> List[Driver]:
 	agents = []
 	n_agents = len(agent_modules)
 
@@ -140,6 +142,7 @@ def __load_agent_drivers(cntx: ExitStack, agent_modules, config:dict, watch=Fals
 class TooManyPlayers(Exception):
 	pass
 
+
 def run(agent_modules, player_names, config=None, recorder=None, watch=False):
 	# Create a new game
 	row_count = config.get('rows')
@@ -153,24 +156,37 @@ def run(agent_modules, player_names, config=None, recorder=None, watch=False):
 	if max_players < len(agent_modules):
 		raise TooManyPlayers(f"Game map ({column_count}x{row_count}) supports at most {max_players} players while {len(agent_modules)} agent requested.")
 
-
 	# Load agent modules
 	with ExitStack() as stack:
-		agents = __load_agent_drivers(stack, agent_modules, watch=watch, config=config)
-		if not agents:
+		agent_drivers = __load_agent_drivers(stack, agent_modules, watch=watch, config=config)
+		if not agent_drivers:
 			return None  # Exiting with an error, no contest
 
 		game = Game(row_count=row_count, column_count=column_count, max_iterations=iteration_limit, recorder=recorder)
 
 		# Add all agents to the game
+		agents: List[AgentProxy] = []
 		names_len = len(player_names) if player_names else 0
-		for i, agent_driver in enumerate(agents):
-			game.add_agent(agent_driver.agent(), player_names[i] if i < names_len else agent_driver.name)
+		for i, agent_driver in enumerate(agent_drivers):
+			agent = agent_driver.agent()
+			agents.append(agent)
+			game.add_agent(agent, player_names[i] if i < names_len else agent_driver.name)
 
 		# Add a player for the user if running in interactive mode or configured interactive
 		user_pid = game.add_player("Player") if is_interactive else None
-
 		game.generate_map()
+
+		wait_time = AGENT_READY_WAIT_TIMEOUT
+		time.sleep(0.1) # Yeld to sub-processes a chance to start and initialise agents
+		agents_not_ready = [a.name for a in agents if not a.is_ready]
+		while agents_not_ready and wait_time > 0:		
+			logger.info(f"Waiting for slowpoke agents [{wait_time} sec]: {agents_not_ready}")
+			time.sleep(AGENT_READY_WAIT_SEC)
+			wait_time -= AGENT_READY_WAIT_SEC
+			agents_not_ready = [a.name for a in agents if not a.is_ready]
+		
+		if agents_not_ready:
+			logger.info(f"Agents {agents_not_ready} are still not ready even after {AGENT_READY_WAIT_TIMEOUT}sec. Starting the match anyways")
 
 		tick_step = config.get('tick_step')
 		if config.get('headless'):

@@ -21,37 +21,56 @@ class GameOver:
 		self.game = game
 		self.player = player
 
+class AgentReady:
+	pass
+
 class AgentProxy(Agent):
+	MAX_READY_SPAM = 3
+
 	def __init__(self, task_queue, result_queue, name:str):
 		logger.debug("Creating multiproc agent proxy for %s", name)
 		self.name = name
 		self.task_queue = task_queue
 		self.result_queue = result_queue
 		self.silenced = False
+
+		self.__is_ready = False
+		self.__last_move = None
+
+	@property
+	def is_ready(self):
+		if not self.__is_ready:
+			# Pick a message:
+			agent_message = self.result_queue.get_nowait() if not self.result_queue.empty() else None
+			if isinstance(agent_message, AgentReady):
+				self.__is_ready = True
+			else:
+				self.__last_move = agent_message
+
+		return self.__is_ready
+
+		
 	
 	def stop(self):
+		# Put a poison pill to signal the stop to the agent driver
 		self.task_queue.put(None)
 
 	def next_move(self):
-		return self.result_queue.get_nowait() if not self.result_queue.empty() else None
+		for _ in range(self.MAX_READY_SPAM):  # Give agent at most MAX_READY_SPAM attempts to report ready_state and start moving
+			agent_message = self.result_queue.get_nowait() if not self.result_queue.empty() else None
+			if isinstance(agent_message, AgentReady):
+				self.__is_ready = True
+				continue
+			
+			return agent_message
+			
+		return None
 	
 	def update(self, game_state:GameState, player_state:PlayerState):
 		self.task_queue.put_nowait(StateUpdate(game=game_state, player=player_state))
 
 	def on_game_over(self, game_state:GameState, player_state:PlayerState):
 		self.task_queue.put_nowait(GameOver(game=game_state, player=player_state))
-
-	# def next_move(self, game_map, game_state):
-	# 	try:
-	# 		move = self.result_queue.get_nowait() if not self.result_queue.empty() else None
-	# 		self.task_queue.put_nowait(StateUpdate(game=game_map, state=game_state))
-	# 		return move
-	# 	except Exception as e:
-	# 		#self.agent = None # Stop existing agent untill the module is fixed
-	# 		if not self.silenced:
-	# 			# self.silenced = True
-	# 			logger.error(f"Agent '{self.name}' error: {e}", exc_info=True)
-	# 	return None
 
 
 class Consumer(multiprocessing.Process):
@@ -90,6 +109,9 @@ class Consumer(multiprocessing.Process):
 		try:
 			agent = driver.agent()
 
+			# Report agent-ready status:
+			self.result_queue.put(AgentReady())
+
 			time_posted = time.time()
 			while self.is_not_done:
 				while not self.task_queue.empty():
@@ -122,10 +144,11 @@ class Consumer(multiprocessing.Process):
 
 class Driver:
 
-	JOIN_TIMEOUT_SEC = 1
+	JOIN_TIMEOUT_SEC = 5
 
 	def __init__(self, name:str, watch: bool = False, config={}):
 		self.name = name
+		self.is_ready = False
 		self.watch = watch
 		self.config = config
 		self._proxies = []
@@ -143,7 +166,7 @@ class Driver:
 				logger.warn(f"process for agent '{self.name}' has not finished gracefully. Terminating")
 				w.terminate()
 
-	def agent(self):
+	def agent(self) -> AgentProxy:
 		tasks_queue = multiprocessing.Queue()
 		agent_result_queue = multiprocessing.Queue()
 		proxy = AgentProxy(tasks_queue, agent_result_queue, self.name)
@@ -153,6 +176,7 @@ class Driver:
 
 		self._workers.append(worker)
 		self._proxies.append(proxy)
+
 		return proxy
 
 	def __enter__(self):

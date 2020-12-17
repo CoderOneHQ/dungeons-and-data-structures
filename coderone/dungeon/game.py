@@ -392,6 +392,7 @@ class Game:
 		# Evaluate game termination rules
 		if not self.is_over:
 			over_iter_limit = True if self.max_iterations and self.tick_counter > self.max_iterations else False
+			# There are opponents, if there are more then 1 player still alive 
 			has_opponents = sum(p.is_alive for p in self.players.values()) > 1
 
 			# Game is over when there is at most 1 player left or 
@@ -400,8 +401,12 @@ class Game:
 
 			if self.is_over:
 				# Picking winners: last player standing or highest scoring corps
-				self.winner = 	sorted(self.players.items(), key=lambda item: item[1].reward)[-1] if has_opponents else \
-								next(((pid,p) for pid,p in self.players.items() if p.is_alive), None)
+				high_scores = sorted(self.players.items(), key=lambda pid_player: pid_player[1].reward)
+				score_range = high_scores[-1][1].reward - high_scores[0][1].reward
+				if has_opponents:  # TODO: Tie only possible if the range of scores is 0
+					self.winner = high_scores[-1] if score_range != 0 else None
+				else:
+					self.winner = next(((pid,p) for pid,p in self.players.items() if p.is_alive), None)
 
 			game_state = self._serialize_state()
 			
