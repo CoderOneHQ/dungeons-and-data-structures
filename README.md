@@ -43,7 +43,7 @@ If you created a bot, we'd love for you to share it with us by raising a pull re
 - Team Solo Bot
 - Artificial Incompetence
 - SY
-- Wizards
+- [Wizards](https://github.com/chrisrabe/ai-sports)
 - UC Engineering Society
 - Rootbeer
 - Datawizards
