@@ -19,7 +19,7 @@ If you created a bot, we'd love for you to share it with us by raising a pull re
 - Chaotic NULLtral
 - Jigglybluff
 - RizDog
-- PGB
+- [PGB](https://github.com/GillesVandewiele/aisports-bomberman)
 - Rengoku
 - Monty Python 3.9.1
 - Reed-Solo-man Error Collector
