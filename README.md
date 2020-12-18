@@ -27,7 +27,7 @@ If you created a bot, we'd love for you to share it with us by raising a pull re
 - Gambit
 - jab.AI
 - FleeBot2077
-- Floth
+- [Floth](https://github.com/suwat513/coderone-floth)
 - DLCT2
 - FSO
 - Oke
