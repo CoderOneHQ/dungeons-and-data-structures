@@ -23,7 +23,7 @@ If you created a bot, we'd love for you to share it with us by raising a pull re
 - Rengoku
 - Monty Python 3.9.1
 - Reed-Solo-man Error Collector
-- Bots by Robots
+- [Bots by Robots](https://github.com/tannishpage/Coder_one_bot)
 - Gambit
 - jab.AI
 - FleeBot2077
