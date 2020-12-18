@@ -5,50 +5,48 @@ We had some amazing submissions from around the world. Congratulations to all ou
 If you created a bot, we'd love for you to share it with us by raising a pull request against this repo to add the link to your bot for others to play against.
 
 **Drumroll for...**
-TEAM NAME
-Baby Yoda
-terserah
-pBot Compilers
-Level 1 NPC
-bruh
-ARX II-13
-M Zheng
-KnAIght
-A Tan
-BombPyrates
-Chaotic NULLtral
-Jigglybluff
-RizDog
-PGB
-Rengoku
-Monty Python 3.9.1
-Reed-Solo-man Error Collector
-Bots by Robots
-Gambit
-jab.AI
-FleeBot2077
-Floth
-DLCT2
-FSO
-Oke
-Mosin
-Thailandnumberone
-Bomber Clan
-ZeroNet
-thegeeky
-AeroBot
-Yeet Yate Yote
-Donkie
-K Chan
-Team Solo Bot
-Artificial Incompetence
-SY
-Wizards
-UC Engineering Society
-Rootbeer
-Datawizards
-
-
+- TEAM NAME
+- Baby Yoda
+- terserah
+- pBot Compilers
+- Level 1 NPC
+- bruh
+- ARX II-13
+- M Zheng
+- KnAIght
+- A Tan
+- BombPyrates
+- Chaotic NULLtral
+- Jigglybluff
+- RizDog
+- PGB
+- Rengoku
+- Monty Python 3.9.1
+- Reed-Solo-man Error Collector
+- Bots by Robots
+- Gambit
+- jab.AI
+- FleeBot2077
+- Floth
+- DLCT2
+- FSO
+- Oke
+- Mosin
+- Thailandnumberone
+- Bomber Clan
+- ZeroNet
+- thegeeky
+- AeroBot
+- Yeet Yate Yote
+- Donkie
+- K Chan
+- Team Solo Bot
+- Artificial Incompetence
+- SY
+- Wizards
+- UC Engineering Society
+- Rootbeer
+- Datawizards
 
 ### Prerequisites
 This is a `python` project and valid Python3 installation is required to run it.
