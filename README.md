@@ -1,10 +1,10 @@
-# Dungeons & Data Structures: Coder One AI Game Challenge
+# Dungeons & Data Structures: Coder One AI Sports Challenge
 
-**The AI Sports Challenge 2020 has officially ended!**
-We had some amazing submissions from around the world. Congratulations to all our teams.
-If you created a bot, we'd love for you to share it with us by raising a pull request against this repo to add the link to your bot for others to play against.
+**The AI Sports Challenge 2020 season has officially ended!**
+We had some amazing submissions from around the world. Congratulations to all our teams! 🎉
+If you created a bot, we'd love for you to share it with us by raising a pull request against this repo and add the link to your bot for others to play against below. 👇
 
-**Drumroll for...**
+### Agent Directory
 - TEAM NAME
 - Baby Yoda
 - terserah
