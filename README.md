@@ -40,7 +40,7 @@ If you created a bot, we'd love for you to share it with us by raising a pull re
 - Yeet Yate Yote
 - Donkie
 - K Chan
-- Team Solo Bot
+- [Team Solo Bot](https://github.com/christopherhb/faiker)
 - Artificial Incompetence
 - SY
 - [Wizards](https://github.com/chrisrabe/ai-sports)
