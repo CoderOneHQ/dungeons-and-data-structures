@@ -39,7 +39,7 @@ If you created a bot, we'd love for you to share it with us by raising a pull re
 - AeroBot
 - Yeet Yate Yote
 - Donkie
-- K Chan
+- [K Chan](https://github.com/kaleongchan/k-chan-agent)
 - [Team Solo Bot](https://github.com/christopherhb/faiker)
 - Artificial Incompetence
 - SY
@@ -53,7 +53,7 @@ This is a `python` project and valid Python3 installation is required to run it.
 If you don't have have `python` installed on your machine, please go to python the official python [web site pt](https://www.python.org/) and follow installation instructions for your operating system.
 
 ## Installation
-There are a number of ways to install the project. Easies is to use intallation package. 
+There are a number of ways to install the project. Easies is to use intallation package.
 Download latest avaialble release from [github release page](https://github.com/gocoderone/dungeons-and-data-structures/releases).
 
 ### MacOS/Linux
@@ -79,7 +79,7 @@ Once you have working installation you can start working on your AI-agent.
 > coderone-dungeon --interactive --watch my_agent
 
 ### Windows
-Windows installation follows similar steps as other operating system. 
+Windows installation follows similar steps as other operating system.
 It is possible that you might need to use an alternative way to start the game, instead of realying on the convenice wraper `codeone-dungeon`
 ```shell
 > python -m coderone.dungeon.main
@@ -175,7 +175,7 @@ Open termnial and run following commands
 > python3 -m venv venv
 > source venv/bin/activate
 > pip install -r coderone/dungeon/requirements.txt
- 
+
 ```
 
 ## Contributions
