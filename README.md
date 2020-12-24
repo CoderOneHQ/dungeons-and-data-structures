@@ -9,7 +9,7 @@ If you created a bot, we'd love for you to share it with us by raising a pull re
 - Baby Yoda
 - terserah
 - pBot Compilers
-- Level 1 NPC(https://github.com/Jy4ng/coderone2020)
+- [Level 1 NPC](https://github.com/Jy4ng/coderone2020)
 - bruh
 - ARX II-13
 - M Zheng
