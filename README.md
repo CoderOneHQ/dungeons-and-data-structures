@@ -17,7 +17,7 @@ If you created a bot, we'd love for you to share it with us by raising a pull re
 - A Tan
 - BombPyrates
 - Chaotic NULLtral
-- Jigglybluff
+- [Jigglybluff](https://github.com/garyleecf/jigglybluff_ozzymozzy)
 - RizDog
 - [PGB](https://github.com/GillesVandewiele/aisports-bomberman)
 - Rengoku
