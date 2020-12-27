@@ -11,7 +11,7 @@ If you created a bot, we'd love for you to share it with us by raising a pull re
 - pBot Compilers
 - [Level 1 NPC](https://github.com/Jy4ng/coderone2020)
 - bruh
-- ARX II-13
+- [ARX II-13](https://github.com/yukuefume/arx_ii-13)
 - M Zheng
 - KnAIght
 - A Tan
