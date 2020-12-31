@@ -1,4 +1,4 @@
-# Dungeons & Data Structures: Coder One AI Sports Challenge
+# Dungeons & Data Structures
 
 **The AI Sports Challenge 2020 season has officially ended!**
 We had some amazing submissions from around the world. Congratulations to all our teams! 🎉
@@ -47,6 +47,9 @@ If you created a bot, we'd love for you to share it with us by raising a pull re
 - UC Engineering Society
 - Rootbeer
 - Datawizards
+
+# Setup and Installation
+New here? Check out the [documentation](https://bit.ly/aisportschallenge) or join us on [Discord](https://discord.gg/NkfgvRN)
 
 ### Prerequisites
 This is a `python` project and valid Python3 installation is required to run it.
