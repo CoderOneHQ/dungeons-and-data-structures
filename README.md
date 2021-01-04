@@ -41,7 +41,7 @@ If you created a bot, we'd love for you to share it with us by raising a pull re
 - Donkie
 - [K Chan](https://github.com/kaleongchan/k-chan-agent)
 - [Team Solo Bot](https://github.com/christopherhb/faiker)
-- Artificial Incompetence
+- [Artificial Incompetence](https://github.com/gimait/DaDSbot)
 - SY
 - [Wizards](https://github.com/chrisrabe/ai-sports)
 - UC Engineering Society
