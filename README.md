@@ -63,8 +63,7 @@ There are several ways to install the project. The simplest way is to use intall
 Download the latest available release from the [github release page](https://github.com/gocoderone/dungeons-and-data-structures/releases).
 
 ### MacOS/Linux
-Assuming `~/workspace` is the directory you want to use to delevop your Agent:
-Open terminal and run:
+Assuming `~/workspace` is the directory you want to use to develop your Agent, open your terminal and run:
 ```shell
 # Create a working directory for your project:
 > mkdir -p ~/workspace/my-agent
@@ -82,7 +81,9 @@ Open terminal and run:
 
 ```
 Once you have a working installation you can start working on your Agent:
-> coderone-dungeon --interactive --watch my_agent
+```
+coderone-dungeon --interactive --watch my_agent
+```
 
 ### Windows
 Windows installation follows similar steps as other operating system. For a step-by-step, check the full documentation [here](https://bit.ly/aisportschallenge).
@@ -93,10 +94,14 @@ It is possible that you might need to use an alternative way to start the game, 
 
 ## Running a game
 Once all game dependencies have been properly installed, the game can be launched using command line:
-> python -m coderone.dungeon.main
+```
+python -m coderone.dungeon.main
+```
 
 There are a number of command line options supported by the game driver. To get a full list of options run:
-> python -m coderone.dungeon.main --help
+```
+python -m coderone.dungeon.main --help
+```
 
 ### Command line options summory
 The game runner recognises a number of command line options.
@@ -122,12 +127,14 @@ There are 3 main modes to run the game:
 This is the mode used to run a tournament.
 
 By default, game runs in a tournament mode, without user input, with graphics output. For example, to run a random match between two Agents "agent1.py" and "agent2.py", run:
-> coderone-dungeon agent1.py agent2.py
+```
+coderone-dungeon agent1.py agent2.py
+```
 
 Agents with multi-file code are also supported. Keep in mind that a proper [python module](https://docs.python.org/3/tutorial/modules.html) must include `__init__.py` file.
 
 ## Config options
-On the first run the game will generate default config file `config.json` and store it in the OS-specific configuation directory.
+On the first run the game will generate a default config file `config.json` and store it in the OS-specific configuation directory.
 
 Default config looks like this:
 ```
@@ -170,7 +177,9 @@ On ARM, python Arcade fails to install without FFI. Install it via:
 ## Development
 
 Clone this git repository:
-> git clone https://github.com/gocoderone/dungeons-and-data-structures
+```
+git clone https://github.com/gocoderone/dungeons-and-data-structures
+```
 
 Open terminal and run the following commands:
 
