@@ -1,5 +1,5 @@
 > ⚠️ **Are you here for the 2021 AI Sports Challenge?** \
-This repo contains the game and documentation for the 2020 version of Dungeons and Data Structures. You can play around with it as practise, but a new game and documentation will be released at the start of the challenge on 22 April 5 PM (AEST). Stay up to date on challenge announcements by joining our [Discord](https://discord.gg/NkfgvRN) and checking your email (after registering [here](https://gocoder.one/aisports?utm_source=github)).
+This repo contains the game and documentation for the 2020 version of Dungeons and Data Structures. You can play around with it as practise, but a new game and documentation will be released at the start of the challenge on 22 April 5 PM (AEST). Stay up to date on challenge announcements by joining our [Discord](https://discord.gg/NkfgvRN) and checking your email (after registering [here](https://www.coderone.dev/aisports?utm_source=github)).
 
 # Dungeons & Data Structures
 
